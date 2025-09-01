@@ -19,8 +19,8 @@
 The library is split into packages to maintain modularity. Install the Core package and your desired integration and persistence packages.
 
 ```shell
-dotnet add package TransactR.Core
-dotnet add package TransactR.MediatR  # or TransactR.Concordia
+dotnet add package TransactR
+dotnet add package TransactR.MediatRï¿½ # or TransactR.Concordia
 
 ```
 
@@ -102,7 +102,7 @@ This is a highly performant and cost-effective store for large-scale application
 builder.Services.AddMediatR(cfg => { /* ... */ });
 
 // Adds the behavior and the context provider
-builder.Services.AddTransactRMediatR(); 
+builder.Services.AddTransactRMediatR();ï¿½
 
 // Register your implementations
 builder.Services.AddSingleton<IMementoStore<MyState, MyStep>, InMemoryMementoStore<MyState, MyStep>>();
@@ -116,30 +116,30 @@ builder.Services.AddScoped<IStateRestorer<MyState>, MyStateRestorer>();
 // The command that triggers the transaction
 public class MyCommand : IRequest, ITransactionalRequest<MyState, MyStep>
 {
-    public string TransactionId { get; set; }
+ï¿½ ï¿½ public string TransactionId { get; set; }
 }
 
 // The context that manages the transaction's state and logic
 public class MyContext : TransactionContext<MyContext, MyState, MyStep>
 {
-    public override MyStep InitialStep => MyStep.Start;
+ï¿½ ï¿½ public override MyStep InitialStep => MyStep.Start;
 
-    public override TransactionOutcome EvaluateResponse<TResponse>(TResponse response)
-    {
-        // Logic to decide if the transaction is completed, in progress, or failed
-        return TransactionOutcome.Completed;
-    }
+ï¿½ ï¿½ public override TransactionOutcome EvaluateResponse<TResponse>(TResponse response)
+ï¿½ ï¿½ {
+ï¿½ ï¿½ ï¿½ ï¿½ // Logic to decide if the transaction is completed, in progress, or failed
+ï¿½ ï¿½ ï¿½ ï¿½ return TransactionOutcome.Completed;
+ï¿½ ï¿½ }
 }
 
 // The logic to restore the state in case of an error
 public class MyStateRestorer : IStateRestorer<MyState>
 {
-    public Task RestoreAsync(MyState state, CancellationToken cancellationToken)
-    {
-        // Logic to update the database with the previous state
-        Console.WriteLine($"Restoring state value to: {state.Value}");
-        return Task.CompletedTask;
-    }
+ï¿½ ï¿½ public Task RestoreAsync(MyState state, CancellationToken cancellationToken)
+ï¿½ ï¿½ {
+ï¿½ ï¿½ ï¿½ ï¿½ // Logic to update the database with the previous state
+ï¿½ ï¿½ ï¿½ ï¿½ Console.WriteLine($"Restoring state value to: {state.Value}");
+ï¿½ ï¿½ ï¿½ ï¿½ return Task.CompletedTask;
+ï¿½ ï¿½ }
 }
 
 ```
@@ -149,25 +149,25 @@ public class MyStateRestorer : IStateRestorer<MyState>
 ```csharp
 public class MyCommandHandler : IRequestHandler<MyCommand>
 {
-    private readonly ITransactionContextProvider<MyContext> _contextProvider;
+ï¿½ ï¿½ private readonly ITransactionContextProvider<MyContext> _contextProvider;
 
-    public MyCommandHandler(ITransactionContextProvider<MyContext> contextProvider)
-    {
-        _contextProvider = contextProvider;
-    }
+ï¿½ ï¿½ public MyCommandHandler(ITransactionContextProvider<MyContext> contextProvider)
+ï¿½ ï¿½ {
+ï¿½ ï¿½ ï¿½ ï¿½ _contextProvider = contextProvider;
+ï¿½ ï¿½ }
 
-    public Task Handle(MyCommand request, CancellationToken cancellationToken)
-    {
-        // Access the context automatically created by the behavior
-        var context = _contextProvider.Context;
-        
-        // Execute your business logic
-        context.State.Value = 100;
+ï¿½ ï¿½ public Task Handle(MyCommand request, CancellationToken cancellationToken)
+ï¿½ ï¿½ {
+ï¿½ ï¿½ ï¿½ ï¿½ // Access the context automatically created by the behavior
+ï¿½ ï¿½ ï¿½ ï¿½ var context = _contextProvider.Context;
+ï¿½ ï¿½ ï¿½ ï¿½ï¿½
+ï¿½ ï¿½ ï¿½ ï¿½ // Execute your business logic
+ï¿½ ï¿½ ï¿½ ï¿½ context.State.Value = 100;
 
-        // If an exception is thrown here, IStateRestorer.RestoreAsync will be invoked.
+ï¿½ ï¿½ ï¿½ ï¿½ // If an exception is thrown here, IStateRestorer.RestoreAsync will be invoked.
 
-        return Task.CompletedTask;
-    }
+ï¿½ ï¿½ ï¿½ ï¿½ return Task.CompletedTask;
+ï¿½ ï¿½ }
 }
 
 ```

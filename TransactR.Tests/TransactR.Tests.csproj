@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TransactR.Core\TransactR.csproj" />
+    <ProjectReference Include="..\TransactR\TransactR.csproj" />
   </ItemGroup>
 
   <ItemGroup>
