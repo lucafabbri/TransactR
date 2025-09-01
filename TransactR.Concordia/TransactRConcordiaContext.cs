@@ -16,8 +16,8 @@ namespace TransactR.Concordia
         /// </summary>
         public TTransactionContext TransactionContext { get; set; }
 
-        public DateTime StartTime => throw new NotImplementedException();
+        public DateTime StartTime { get; set; }
 
-        public string ErrorCode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public string ErrorCode { get; set; }
     }
 }

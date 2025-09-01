@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
     <!-- NuGet Metadata -->
-    <PackageId>TransactR.Concordia</PackageId>
+    <PackageId>TransactR.DistributedMemoryCache</PackageId>
     <Version>0.1.0</Version>
     <Authors>Luca Fabbri</Authors>
     <Description>TransactR is a lightweight and extensible .NET library that simplifies transactional workflows and rollbacks. It uses the Memento pattern to automatically save and restore the application state, ensuring data integrity in case of failures. The library is modular and provides seamless integration with popular frameworks like MediatR and Concordia.Core.</Description>
@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Concordia.Core" Version="1.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
