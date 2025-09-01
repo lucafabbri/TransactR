@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="0.1.11"></a>
+## [0.1.11](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.1.11) (2025-09-01)
+
+### Bug Fixes
+
+* extract release notes ([34c1cba](https://www.github.com/lucafabbri/TransactR/commit/34c1cbad279a6ebdce64a95b76308b3fd30ef16d))
+
 <a name="0.1.10"></a>
 ## [0.1.10](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.1.10) (2025-09-01)
 
