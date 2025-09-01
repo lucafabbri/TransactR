@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- NuGet Metadata -->
+    <PackageId>TransactR.MediatR</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Luca Fabbri</Authors>
+    <Description>TransactR is a lightweight and extensible .NET library that simplifies transactional workflows and rollbacks. It uses the Memento pattern to automatically save and restore the application state, ensuring data integrity in case of failures. The library is modular and provides seamless integration with popular frameworks like MediatR and Concordia.Core.</Description>
+    <RepositoryUrl>https://github.com/lucafabbri/TransactR</RepositoryUrl>
+    <PackageTags>memento;cqrs;transactions;pipeline;concordia;mediatr;lucafabbri</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Concordia.Core" Version="1.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TransactR.Core\TransactR.csproj" />
+  </ItemGroup>
+
+</Project>
