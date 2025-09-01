@@ -45,24 +45,12 @@ jobs:
       # I seguenti passaggi vengono eseguiti SOLO se il workflow
       # è stato attivato dal push di un tag (es. v1.2.3)
 
-      # 6. Copia README.md per risolvere l'errore NU5039
-      - name: Copy README to project directories for packing
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          # Questo passaggio risolve l'errore NU5039 copiando il README.md dalla root
-          # in ogni cartella di progetto che ne ha bisogno per il pacchetto NuGet.
-          # L'elenco dei progetti è basato sulla configurazione originale.
-          for proj in TransactR TransactR.Concordia TransactR.MediatR TransactR.EntityFramework TransactR.DistributedMemoryCache TransactR.MongoDB TransactR.AzureTableStorage
-          do
-            cp README.md "$proj/"
-          done
-
-      # 7. Crea i pacchetti NuGet per tutti i progetti nella soluzione
+      # 6. Crea i pacchetti NuGet per tutti i progetti nella soluzione
       - name: Pack projects
         if: startsWith(github.ref, 'refs/tags/v')
         run: dotnet pack TransactR.sln --no-build --configuration Release --output ./packages
 
-      # 8. Pubblica tutti i pacchetti .nupkg creati nel passo precedente
+      # 7. Pubblica tutti i pacchetti .nupkg creati nel passo precedente
       - name: Publish to NuGet
         if: startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "./packages/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
