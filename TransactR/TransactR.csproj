@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
@@ -21,11 +21,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
   </ItemGroup>
 
-  <!-- SEZIONE AGGIUNTA PER INCLUDERE IL README -->
   <ItemGroup>
-    <!-- Questo include il file README.md che si trova nella cartella principale (../)
-         e lo inserisce alla radice del pacchetto NuGet. -->
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
+
 
 </Project>

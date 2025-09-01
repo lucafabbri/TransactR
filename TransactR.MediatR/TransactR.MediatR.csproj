@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MediatR" Version="13.0.0" />
   </ItemGroup>
 
