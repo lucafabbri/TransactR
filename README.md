@@ -1,5 +1,6 @@
 # TransactR
-[![Build Status](https://github.com/lucafabbri/TransactR/actions/workflows/publish.yml/badge.svg)](https://github.com/lucafabbri/TransactR/actions) [![GitHub release](https://img.shields.io/github/v/release/lucafabbri/TransactR)](https://github.com/lucafabbri/TransactR/releases) [![NuGet](https://img.shields.io/nuget/v/TransactR)](https://www.nuget.org/packages/TransactR)
+[![Build Status](https://github.com/lucafabbri/TransactR/actions/workflows/main.yml/badge.svg)](https://github.com/lucafabbri/TransactR/actions) [![GitHub release](https://img.shields.io/github/v/release/lucafabbri/TransactR)](https://github.com/lucafabbri/TransactR/releases) [![NuGet](https://img.shields.io/nuget/v/TransactR)](https://www.nuget.org/packages/TransactR)
+
 **TransactR** is a lightweight and flexible .NET library for managing transactions and rollbacks based on the Memento pattern. It is designed to be integrated into command processing pipelines, such as those provided by MediatR or Concordia.Core, to save the state of an operation before its execution and automatically restore it in case of an error.
 
 ## Key Concepts
