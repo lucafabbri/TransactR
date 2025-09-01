@@ -56,4 +56,13 @@ jobs:
       - name: Publish to NuGet
         if: startsWith(github.ref, 'refs/tags/v')
         run: dotnet nuget push "./packages/*.nupkg" --api-key "${{ secrets.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json
+      
+      # 8. Crea una Release su GitHub e carica i pacchetti come artefatti
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ./packages/*.nupkg
+          # Aggiunge il contenuto di CHANGELOG.md come descrizione della release
+          body_path: CHANGELOG.md
 
