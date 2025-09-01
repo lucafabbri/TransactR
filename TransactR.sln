@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactR", "TransactR.Core\TransactR.csproj", "{08538DC0-16D7-4D4B-AAB9-A51CB6921E3E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactR", "TransactR\TransactR.csproj", "{08538DC0-16D7-4D4B-AAB9-A51CB6921E3E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactR.MediatR", "TransactR.MediatR\TransactR.MediatR.csproj", "{6A5E198A-D7E6-492A-B553-4F5DDD7EBD67}"
 EndProject
