@@ -17,9 +17,13 @@ on:
 jobs:
   build_and_publish:
     # SPECIFICA L'AMBIENTE PER ACCEDERE AI SEGRETI CORRISPONDENTI
-    # Questa riga collega il job all'ambiente "Production" e ai suoi segreti.
     environment: Production
     runs-on: ubuntu-latest
+    
+    # AGGIUNGE I PERMESSI NECESSARI PER CREARE UNA RELEASE
+    permissions:
+      contents: write
+
     steps:
       # 1. Scarica il codice del repository
       - name: Checkout code
