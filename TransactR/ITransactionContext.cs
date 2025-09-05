@@ -5,8 +5,8 @@ namespace TransactR
     /// <summary>
     /// Contains the context for a transaction, including its ID, current step, and state.
     /// </summary>
-    public interface ITransactionContext<TContext, TState, TStep>
-        where TContext : ITransactionContext<TContext, TState, TStep>
+    public interface ITransactionContext<TContext, TState, TStep, TResponse>
+        where TContext : ITransactionContext<TContext, TState, TStep, TResponse>
         where TStep : notnull, IComparable
         where TState : class, new()
     {
@@ -33,7 +33,7 @@ namespace TransactR
         /// <summary>
         /// Evaluates the response from the handler to determine the outcome of the transaction step.
         /// </summary>
-        TransactionOutcome EvaluateResponse<TResponse>(TResponse response);
+        TransactionOutcome EvaluateResponse(TResponse response);
     }
 }
 

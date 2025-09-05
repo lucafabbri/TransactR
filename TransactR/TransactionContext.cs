@@ -6,8 +6,8 @@ namespace TransactR
     /// Provides the base implementation for a transaction context.
     /// Consumers must inherit from this class to provide a concrete evaluation logic.
     /// </summary>
-    public abstract class TransactionContext<TContext, TState, TStep> : ITransactionContext<TContext, TState, TStep>
-        where TContext : TransactionContext<TContext, TState, TStep>
+    public abstract class TransactionContext<TContext, TState, TStep, TResponse> : ITransactionContext<TContext, TState, TStep, TResponse>
+        where TContext : TransactionContext<TContext, TState, TStep, TResponse>
         where TState : class, new()
         where TStep : notnull, IComparable
     {
@@ -20,7 +20,7 @@ namespace TransactR
         /// When implemented in a derived class, evaluates the response from the handler
         /// to determine the outcome of the transaction step.
         /// </summary>
-        public abstract TransactionOutcome EvaluateResponse<TResponse>(TResponse response);
+        public abstract TransactionOutcome EvaluateResponse(TResponse response);
 
         public TContext Initialize(string transactionId)
         {

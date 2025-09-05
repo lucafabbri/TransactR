@@ -12,7 +12,7 @@ namespace TransactR.Behaviors
     /// </summary>
     public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, TState, TStep>
         where TRequest : ITransactionalRequest<TState, TStep>
-        where TContext : class, ITransactionContext<TContext, TState, TStep>, new()
+        where TContext : class, ITransactionContext<TContext, TState, TStep, TResponse>, new()
         where TState : class, new()
         where TStep : notnull, IComparable
     {
@@ -42,7 +42,7 @@ namespace TransactR.Behaviors
             CancellationToken cancellationToken)
         {
             var latestMemento = await _mementoStore.GetLatestAsync(request.TransactionId, cancellationToken);
-            ITransactionContext<TContext, TState, TStep> transactionContext;
+            ITransactionContext<TContext, TState, TStep, TResponse> transactionContext;
 
             if (latestMemento != null)
             {

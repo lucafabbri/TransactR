@@ -1,239 +1,207 @@
 # TransactR
 [![Build Status](https://github.com/lucafabbri/TransactR/actions/workflows/main.yml/badge.svg)](https://github.com/lucafabbri/TransactR/actions) [![GitHub release](https://img.shields.io/github/v/release/lucafabbri/TransactR)](https://github.com/lucafabbri/TransactR/releases) [![NuGet](https://img.shields.io/nuget/v/TransactR)](https://www.nuget.org/packages/TransactR)
 
-**TransactR** is a lightweight and flexible .NET library for managing transactions and rollbacks based on the Memento pattern. It is designed to be integrated into command processing pipelines, such as those provided by MediatR or Concordia.Core, to save the state of an operation before its execution and automatically restore it in case of an error.
+A lightweight .NET library for building reliable, stateful, and multi-step operations using the Memento pattern.
 
-## Key Concepts
+---
 
-* **Memento Pattern**: The core of the library. It captures and stores an object's internal state (the "memento") so that it can be restored later, without violating encapsulation.
+## 🤔 Why TransactR?
 
-* **Transactional Behavior**: A pipeline behavior that intercepts requests, orchestrates the saving of the initial state, and handles rollback logic within a `try/catch` block.
+Modern applications often deal with complex business processes that span multiple service calls or user interactions. Managing the state of these operations and ensuring data consistency in case of failure can be challenging.
 
-* **State Management**: State persistence is managed through the `IMementoStore` interface, while the restoration logic is delegated to an `IStateRestorer`, allowing for maximum flexibility (in-memory, database, etc.).
+**TransactR** simplifies this by providing a transactional layer for your command pipeline (like MediatR or Concordia.Core). It allows you to:
 
-* **Interactive Saga**: Supports multi-step processes where the transaction state is preserved across multiple calls, enabling the continuation of complex workflows.
+* **Implement Sagas**: Easily build long-running processes where state is preserved between steps.
+* **Prevent Inconsistent Data**: Automatically roll back to a previous valid state when an operation fails, whether due to a system exception or a business logic failure.
+* **Decouple State Management**: Keep your business logic clean by abstracting away the persistence and restoration of state.
 
-* **Disaster Recovery**: Offers configurable rollback policies (`RollbackToCurrentStep`, `RollbackToBeginning`, `DeleteTransactionState`) to handle unexpected exceptions.
+## ✨ Features
 
-## Installation
+* **State Management with Memento Pattern**: Captures an object's state to allow for later restoration.
+* **Transactional Pipeline Behavior**: Intercepts command processing to orchestrate state saving, execution, and rollback.
+* **Pluggable Storage**: Abstracted persistence via `IMementoStore` with multiple backends (Entity Framework, MongoDB, Redis, etc.).
+* **Custom Rollback Logic**: Define how to restore state when an operation fails using `IStateRestorer`.
+* **Interactive Saga Support**: Maintains transaction state across multiple requests.
+* **Flexible Outcome Evaluation**: Determines transaction outcome by evaluating the handler's response, not just by catching exceptions.
+* **Configurable Disaster Recovery**: Offers fine-grained rollback policies (`RollbackToCurrentStep`, `RollbackToBeginning`, `DeleteTransactionState`).
+* **Per-Request Rollback Policies**: Override the default rollback behavior directly on your request object.
 
-The library is split into packages to maintain modularity. Install the Core package and your desired integration and persistence packages.
+## ⚙️ How It Works
 
-```shell
-dotnet add package TransactR
-dotnet add package TransactR.MediatR� # or TransactR.Concordia
+1.  A command implementing `ITransactionalRequest` enters the pipeline.
+2.  The `TransactionalBehavior` intercepts it.
+3.  It retrieves the transaction's current state from the `IMementoStore` using the `TransactionId`.
+4.  It creates a `TransactionContext` containing the state.
+5.  The business logic is executed in the command handler, which returns a response.
+6.  The `TransactionContext` evaluates the response. If the outcome is `Failed`, or if an unhandled exception occurs, a rollback is triggered.
+7.  The `IStateRestorer` is invoked to restore the previous state based on the configured `RollbackPolicy`.
+8.  The final state is persisted back to the `IMementoStore` if the transaction is still in progress.
 
+## 🚀 Getting Started: Example with MediatR
+
+Here is a complete example of how to configure and use TransactR.
+
+### 1. Define State, Steps, and Response
+
+First, define the objects for your transaction's state, workflow steps, and the response from your handler.
+
+```csharp
+// The state object that will be saved and restored.
+public class MyState
+{
+    public int Value { get; set; }
+}
+
+// The steps of your transaction.
+public enum MyStep
+{
+    Start,
+    Processing,
+    Completed
+}
+
+// The response from your handler.
+public class MyResponse
+{
+    public bool IsSuccess { get; set; }
+}
 ```
 
-## Memento Store Implementations
+### 2. Configure Dependency Injection
 
-`TransactR` is designed to be storage-agnostic. You can use one of the following official implementations or create your own by implementing the `IMementoStore` interface.
-
-### TransactR.EntityFramework
-
-This store is ideal for applications that already use Entity Framework Core. It integrates seamlessly into an existing `DbContext`, leveraging its transaction management and allowing developers to handle migrations.
-
-* **Installation:**
-    ```shell
-    dotnet add package TransactR.EntityFramework
-    ```
-* **DI Integration:**
-    ```csharp
-    // Program.cs
-    // Adds TransactR entities to your DbContext and registers the MementoStore implementation.
-    builder.Services.AddEntityFrameworkMementoStore<ApplicationDbContext, MyState, int>();
-    ```
-
-### TransactR.DistributedMemoryCache
-
-This implementation is perfect for high-speed, volatile state persistence. It's a great choice for short-lived transactions or for use in microservices where a distributed cache like Redis is already in place.
-
-* **Installation:**
-    ```shell
-    dotnet add package TransactR.DistributedMemoryCache
-    ```
-* **DI Integration:**
-    ```csharp
-    // Program.cs
-    // The service automatically handles serialization and deserialization.
-    builder.Services.AddDistributedMemoryCache(); // Or a distributed cache of your choice (e.g., Redis)
-    builder.Services.AddDistributedMemoryCacheMementoStore<MyState, int>();
-    ```
-
-### TransactR.MongoDB
-
-This store offers maximum flexibility for state persistence. It's ideal for complex mementos where the structure may change over time, as it doesn't require schema migrations.
-
-* **Installation:**
-    ```shell
-    dotnet add package TransactR.MongoDB
-    ```
-* **DI Integration:**
-    ```csharp
-    // Program.cs
-    builder.Services.AddMongoDbMementoStore<MyState, int>(
-        builder.Configuration.GetConnectionString("MongoDbConnection"),
-        "your-database-name",
-        "mementos"
-    );
-    ```
-
-### TransactR.AzureTableStorage
-
-This is a highly performant and cost-effective store for large-scale applications. It's an excellent choice for scenarios that require a simple key-value store with high throughput and low latency.
-
-* **Installation:**
-    ```shell
-    dotnet add package TransactR.AzureTableStorage
-    ```
-* **DI Integration:**
-    ```csharp
-    // Program.cs
-    builder.Services.AddAzureTableStorageMementoStore<MyState, int>(
-        builder.Configuration.GetConnectionString("AzureStorageConnectionString")
-    );
-    ```
-
-## Usage Example (with MediatR)
-
-### 1. Configuration (Dependency Injection)
+In your `Program.cs`, configure MediatR, TransactR, and the required components.
 
 ```csharp
 // Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Add MediatR
 builder.Services.AddMediatR(cfg => { /* ... */ });
 
-// Adds the behavior and the context provider
-builder.Services.AddTransactRMediatR();�
+// 2. Add TransactR's behavior and context provider for MediatR
+builder.Services.AddTransactRMediatR();
 
-// Register your implementations
+// 3. Register your MementoStore implementation
 builder.Services.AddSingleton<IMementoStore<MyState, MyStep>, InMemoryMementoStore<MyState, MyStep>>();
+
+// 4. Register your custom state restorer
 builder.Services.AddScoped<IStateRestorer<MyState>, MyStateRestorer>();
-
 ```
 
-### 2. Component Definitions
+### 3. Define the Transactional Components
+
+Create the command, the transaction context, and the state restorer.
 
 ```csharp
-// The command that triggers the transaction
-public class MyCommand : IRequest, ITransactionalRequest<MyState, MyStep>
-{
-� � public string TransactionId { get; set; }
-}
-
-// The context that manages the transaction's state and logic
-public class MyContext : TransactionContext<MyContext, MyState, MyStep>
-{
-� � public override MyStep InitialStep => MyStep.Start;
-
-� � public override TransactionOutcome EvaluateResponse<TResponse>(TResponse response)
-� � {
-� � � � // Logic to decide if the transaction is completed, in progress, or failed
-� � � � return TransactionOutcome.Completed;
-� � }
-}
-
-// The logic to restore the state in case of an error
-public class MyStateRestorer : IStateRestorer<MyState>
-{
-� � public Task RestoreAsync(MyState state, CancellationToken cancellationToken)
-� � {
-� � � � // Logic to update the database with the previous state
-� � � � Console.WriteLine($"Restoring state value to: {state.Value}");
-� � � � return Task.CompletedTask;
-� � }
-}
-
-```
-
-### 3. Usage in the Handler
-
-```csharp
-public class MyCommandHandler : IRequestHandler<MyCommand>
-{
-� � private readonly ITransactionContextProvider<MyContext> _contextProvider;
-
-� � public MyCommandHandler(ITransactionContextProvider<MyContext> contextProvider)
-� � {
-� � � � _contextProvider = contextProvider;
-� � }
-
-� � public Task Handle(MyCommand request, CancellationToken cancellationToken)
-� � {
-� � � � // Access the context automatically created by the behavior
-� � � � var context = _contextProvider.Context;
-� � � ��
-� � � � // Execute your business logic
-� � � � context.State.Value = 100;
-
-� � � � // If an exception is thrown here, IStateRestorer.RestoreAsync will be invoked.
-
-� � � � return Task.CompletedTask;
-� � }
-}
-
-```
-
-## Usage Example (with Concordia.Core)
-
-### 1. Configuration (Dependency Injection)
-
-`TransactR.Concordia` automatically registers the `TransactionalBehavior` and requires that the `IMementoStore` and `IStateRestorer` be registered separately.
-
-```csharp
-// Program.cs
-builder.Services.AddMediator(cfg => { /*...*/ });
-builder.Services.AddTransactRConcordia();
-
-// Register your implementations
-builder.Services.AddEntityFrameworkMementoStore<ApplicationDbContext, MyState, int>(builder.Configuration);
-builder.Services.AddScoped<IStateRestorer<MyState>, MyStateRestorer>();
-
-```
-
-### 2. Component Definitions
-
-The components for `Concordia.Core` are similar to those for MediatR, but they use the `ICommand` interface and `TransactRConcordiaContext` to carry the transaction context.
-
-```csharp
-// The command that triggers the transaction
-public class MyCommand : ICommand<Response>, ITransactionalRequest<MyState, MyStep>
+// The command that initiates or continues the transaction.
+public class MyCommand : IRequest<MyResponse>, ITransactionalRequest<MyState, MyStep>
 {
     public string TransactionId { get; set; }
 }
 
-// The handler's context that carries the transaction state.
-// The base class handles context creation and state management.
-public class MyConcordiaContext : TransactRConcordiaContext<MyContext> { }
+// The context defines the transaction's workflow and outcome logic.
+public class MyTransactionContext : TransactionContext<MyTransactionContext, MyState, MyStep, MyResponse>
+{
+    public override MyStep InitialStep => MyStep.Start;
 
-// The logic to restore the state in case of an error
+    // Logic to determine the transaction outcome based on the handler's response.
+    public override TransactionOutcome EvaluateResponse(MyResponse response)
+    {
+        if (!response.IsSuccess)
+        {
+            return TransactionOutcome.Failed; // This will trigger a rollback.
+        }
+        
+        // You can add logic for multi-step sagas here.
+        return TransactionOutcome.Completed;
+    }
+}
+
+// The logic to restore state in case of an error.
 public class MyStateRestorer : IStateRestorer<MyState>
 {
     public Task RestoreAsync(MyState state, CancellationToken cancellationToken)
     {
-        // Logic to update the database with the previous state
-        Console.WriteLine($"Restoring state value to: {state.Value}");
+        // Your logic to revert changes in the database or other systems.
+        Console.WriteLine($""Restoring state value to: {state.Value}"");
         return Task.CompletedTask;
     }
 }
-
 ```
 
-### 3. Usage in the Handler
+### 4. Implement the Command Handler
 
-In `Concordia.Core`, the `ITransactionContext` is available in the handler via `context.TransactionContext`.
+Access the transaction context and implement your business logic.
 
 ```csharp
-public class MyCommandHandler : ICommandHandler<MyCommand, MyConcordiaContext>
+public class MyCommandHandler : IRequestHandler<MyCommand, MyResponse>
 {
-    public Task<Response> HandleAsync(MyCommand request, MyConcordiaContext context, CancellationToken cancellationToken)
+    private readonly ITransactionContextProvider<MyTransactionContext> _contextProvider;
+
+    public MyCommandHandler(ITransactionContextProvider<MyTransactionContext> contextProvider)
     {
-        // Access the context automatically created by the behavior
-        var transactionContext = context.TransactionContext;
+        _contextProvider = contextProvider;
+    }
 
-        // Execute your business logic
-        transactionContext.State.Value = 100;
+    public Task<MyResponse> Handle(MyCommand request, CancellationToken cancellationToken)
+    {
+        var context = _contextProvider.Context;
+        context.State.Value = 100;
 
-        // If an exception is thrown here, IStateRestorer.RestoreAsync will be invoked.
-        return Task.FromResult(new Response());
+        // If an exception is thrown, a rollback occurs.
+        // If IsSuccess is false, a rollback also occurs based on EvaluateResponse.
+        return Task.FromResult(new MyResponse { IsSuccess = true });
     }
 }
+```
+
+### 5. Overriding the Rollback Policy
+
+By default, a failure triggers a rollback to the current step (`RollbackToCurrentStep`). You can override this by implementing `ITransactionalRequestWithPolicy` on your command.
+
+```csharp
+public class MyCommandWithPolicy : IRequest<MyResponse>, ITransactionalRequestWithPolicy<MyState, MyStep>
+{
+    public string TransactionId { get; set; }
+
+    // Specify a different policy, e.g., roll back to the very first step.
+    public RollbackPolicy RollbackPolicy => RollbackPolicy.RollbackToBeginning;
+}
+```
+
+## 🔧 Memento Store Implementations
+
+TransactR is storage-agnostic. You can use an official implementation or create your own by implementing `IMementoStore`.
+
+### TransactR.EntityFramework
+[![NuGet](https://img.shields.io/nuget/v/TransactR.EntityFramework)](https://www.nuget.org/packages/TransactR.EntityFramework)
+* **Installation:** `dotnet add package TransactR.EntityFramework`
+* **DI Integration:** `builder.Services.AddEntityFrameworkMementoStore<ApplicationDbContext, MyState, int>();`
+
+### TransactR.DistributedMemoryCache
+[![NuGet](https://img.shields.io/nuget/v/TransactR.DistributedMemoryCache)](https://www.nuget.org/packages/TransactR.DistributedMemoryCache)
+* **Installation:** `dotnet add package TransactR.DistributedMemoryCache`
+* **DI Integration:** `builder.Services.AddDistributedMemoryCacheMementoStore<MyState, int>();`
+
+### TransactR.MongoDB
+[![NuGet](https://img.shields.io/nuget/v/TransactR.MongoDB)](https://www.nuget.org/packages/TransactR.MongoDB)
+* **Installation:** `dotnet add package TransactR.MongoDB`
+* **DI Integration:** `builder.Services.AddMongoDbMementoStore<MyState, int>(...);`
+
+### TransactR.AzureTableStorage
+[![NuGet](https://img.shields.io/nuget/v/TransactR.AzureTableStorage)](https://www.nuget.org/packages/TransactR.AzureTableStorage)
+* **Installation:** `dotnet add package TransactR.AzureTableStorage`
+* **DI Integration:** `builder.Services.AddAzureTableStorageMementoStore<MyState, int>(...);`
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+Feel free to check the [issues page](https://github.com/lucafabbri/TransactR/issues).
+
+## 💖 Show Your Support
+
+Please give a ⭐️ if this project helped you!
+
+## 📝 License
+
+This project is licensed under the **MIT License**.

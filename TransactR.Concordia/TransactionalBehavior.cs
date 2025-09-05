@@ -15,7 +15,7 @@ namespace TransactR.Concordia
     public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TState, TStep>
         : ContextualPipelineBehavior<TRequest, TResponse, TransactRConcordiaContext<TTransactionContext>>
         where TRequest : ITransactionalRequest<TState, TStep>, IRequest<TResponse>
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState, TStep>, new()
+        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState, TStep, TResponse>, new()
         where TState : class, new()
         where TStep : notnull, IComparable
     {

@@ -9,7 +9,7 @@ namespace TransactR.MediatR
     public class TransactionalBehavior<TRequest, TResponse, TContext, TState, TStep>
         : TransactionalBehaviorBase<TRequest, TResponse, TContext, TState, TStep>, IPipelineBehavior<TRequest, TResponse>
         where TRequest : ITransactionalRequest<TState, TStep>, IRequest<TResponse>
-        where TContext : class, ITransactionContext<TContext, TState, TStep>, new()
+        where TContext : class, ITransactionContext<TContext, TState, TStep, TResponse>, new()
         where TState : class, new()
         where TStep : notnull, IComparable
     {
