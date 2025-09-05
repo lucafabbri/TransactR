@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="0.2.0"></a>
+## [0.2.0](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.2.0) (2025-09-05)
+
+### Features
+
+* adds visibility of response type to TransactionContext ([16af9d0](https://www.github.com/lucafabbri/TransactR/commit/16af9d05bc201c4547f1712043b535b4e93a2add))
+
 <a name="0.1.11"></a>
 ## [0.1.11](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.1.11) (2025-09-01)
 
