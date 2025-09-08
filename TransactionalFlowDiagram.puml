@@ -1,0 +1,86 @@
+@startuml
+title Logical Flow of TransactionalBehaviorBase
+
+start
+
+:Receives TRequest;
+
+:Retrieves the latest memento
+using request.TransactionId
+(IMementoStore.GetLatestAsync);
+
+if (Memento found?) then (yes)
+    :Log: "Continuing transaction...";
+    :Creates a new TContext;
+    :Hydrates the context with the state
+    from the memento (TContext.Hydrate);
+else (no)
+    :Log: "Starting new transaction...";
+    :Creates a new TContext;
+    :Initializes the context
+    for a new transaction
+    (TContext.Initialize);
+endif
+
+:Sets the TContext in the provider
+(ITransactionContextProvider.Context);
+
+:Saves pre-execution data:
+- transactionId
+- stepToProtect
+- stateToProtect;
+
+partition "Business Logic Execution" {
+    :Executes the next step of the pipeline
+    await next(context);
+    
+    if (Execution failed with Exception?) then (yes)
+        :Log: "An error occurred...";
+
+        switch (request.RollbackPolicy)
+        case ( RollbackToCurrentStep )
+            :Executes RollbackToStepAsync(stepToProtect);
+        case ( RollbackToBeginning )
+            :Retrieves the first step
+            (IMementoStore.GetFirstStepAsync);
+            :Executes RollbackToStepAsync(firstStep);
+        case ( DeleteTransactionState )
+            :Removes all mementos;
+        endswitch
+        
+        :Rethrows the original exception;
+        stop
+    else (no)
+        :Evaluates the TResponse
+        (TContext.EvaluateResponse)
+        to get TransactionOutcome;
+
+        switch (TransactionOutcome?)
+        case ( Completed )
+            :Log: "Saga completed";
+            :Removes all mementos
+            for the transaction;
+        case ( InProgress )
+            :Log: "Transaction in progress";
+            if(TryIncrementStep() fails?) then (yes)
+                :Log: "Step could not be incremented";
+                :Throws InvalidOperationException;
+                stop
+            else (no)
+            endif
+        case ( Failed )
+            :Log: "Transaction failed";
+            :Throws TransactionEvaluationFailedException
+            to trigger the rollback;
+            stop
+        endswitch
+        
+        :Log: "Saving memento...";
+        :Saves the current state
+        (IMementoStore.SaveAsync);
+
+        :Returns TResponse;
+        stop
+    endif
+}
+@enduml

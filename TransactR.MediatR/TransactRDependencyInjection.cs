@@ -1,39 +1,74 @@
 ﻿using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Linq;
+using System.Reflection;
 
 namespace TransactR.MediatR
 {
-    public static class TransactRDependencyInjection
+    public static class TransactRMediatRDependencyInjection
     {
         /// <summary>
-        /// Registra il TransactionalBehavior di TransactR nella pipeline di MediatR.
-        /// Assicurati di registrare anche le implementazioni di IMementoStore, IStateExtractor e IStateRestorer.
+        /// Registers the MediatR-specific transaction context builder factory.
+        /// This method should be called after AddTransactR() to enable MediatR integration.
         /// </summary>
-        /// <param name="services">La IServiceCollection.</param>
-        /// <returns>La IServiceCollection per il chaining.</returns>
-        public static IServiceCollection AddTransactRMediatR(this IServiceCollection services)
+        public static ITransactorBuilder OnMediatR(this ITransactorBuilder builder)
         {
-            // Registra il behavior come un open generic. 
-            // Il container DI lo risolverà per ogni TRequest che implementa ITransactionalRequest.
-            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalBehavior<,,,,>));
-            return services;
+            builder.Options.TransactionContextBuilderFactory = new MediatRTransactionContextBuilderFactory();
+            return builder;
+        }
+    }
+
+    /// <summary>
+    /// The factory responsible for creating MediatR-specific transaction context builders.
+    /// </summary>
+    internal class MediatRTransactionContextBuilderFactory : ITransactionContextBuilderFactory
+    {
+        public ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
+            where TState : class, IState, new()
+            where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+        {
+            return new MediatRTransactionContextBuilder<TState, TTransactionContext>(options);
+        }
+    }
+
+    /// <summary>
+    /// MediatR's concrete implementation of the transaction context builder.
+    /// It contains the actual logic for the Surround method.
+    /// </summary>
+    internal class MediatRTransactionContextBuilder<TState, TTransactionContext>
+        : TransactorBuilder<TState>, ITransactionContextBuilder<TState, TTransactionContext>
+        where TState : class, IState, new()
+        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+    {
+        public MediatRTransactionContextBuilder(TransactorBuilderOptions options) : base(options) { }
+
+        public ITransactionContextBuilder<TState, TTransactionContext> Surround<TRequest>()
+            where TRequest : ITransactionalRequest<TState>
+        {
+            var requestType = typeof(TRequest);
+            var responseType = GetResponseTypeFromRequest(requestType);
+
+            if (responseType == null)
+            {
+                throw new ArgumentException($"Type '{requestType.FullName}' must implement the MediatR 'IRequest<TResponse>' interface.");
+            }
+
+            var pipelineBehaviorInterfaceType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+            var transactionalBehaviorImplementationType = typeof(TransactionalBehavior<,,,>).MakeGenericType(requestType, responseType, typeof(TTransactionContext), typeof(TState));
+
+            Options.Services.AddTransient(pipelineBehaviorInterfaceType, transactionalBehaviorImplementationType);
+
+            return this;
         }
 
-        /// <summary>
-        /// Registra l'implementazione in-memory di IMementoStore come singleton.
-        /// Utile per test o applicazioni semplici.
-        /// </summary>
-        /// <typeparam name="TState">Il tipo di stato.</typeparam>
-        /// <typeparam name="TStep">Il tipo di step.</typeparam>
-        /// <param name="services">La IServiceCollection.</param>
-        /// <returns>La IServiceCollection per il chaining.</returns>
-        public static IServiceCollection AddTransactRInMemoryStore<TState, TStep>(this IServiceCollection services)
-            where TStep : notnull, IComparable
-            where TState : class, new()
+        private static Type? GetResponseTypeFromRequest(Type requestType)
         {
-            services.AddSingleton<IMementoStore<TState, TStep>, InMemoryMementoStore<TState, TStep>>();
-            return services;
+            // MediatR's IRequest<T> is in the MediatR namespace.
+            var iRequestInterface = requestType.GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>));
+
+            return iRequestInterface?.GetGenericArguments().FirstOrDefault();
         }
     }
 }

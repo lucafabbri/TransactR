@@ -4,72 +4,70 @@ using System.Threading.Tasks;
 using System;
 using System.Threading;
 
-namespace TransactR
+namespace TransactR;
+
+/// <summary>
+/// An in-memory implementation of IMementoStore for testing and simple scenarios.
+/// This implementation is thread-safe.
+/// </summary>
+public class InMemoryMementoStore<TState> : IMementoStore<TState>
+    where TState : class, IState, new()
 {
-    /// <summary>
-    /// An in-memory implementation of IMementoStore for testing and simple scenarios.
-    /// This implementation is thread-safe.
-    /// </summary>
-    public class InMemoryMementoStore<TState, TStep> : IMementoStore<TState, TStep>
-        where TStep : notnull, IComparable
-        where TState : class, new()
+    private readonly ConcurrentDictionary<string, ConcurrentDictionary<IComparable,TState>> _store = new();
+
+    public Task SaveAsync(string transactionId, TState state, CancellationToken cancellationToken = default)
     {
-        private readonly ConcurrentDictionary<string, ConcurrentDictionary<TStep, TState>> _store = new();
+        var transactionMementos = _store.GetOrAdd(transactionId, _ => new ConcurrentDictionary<IComparable, TState>());
+        transactionMementos[state.Step] = state;
+        return Task.CompletedTask;
+    }
 
-        public Task SaveAsync(string transactionId, TStep step, TState state, CancellationToken cancellationToken = default)
+    public Task<TState?> RetrieveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    {
+        if (_store.TryGetValue(transactionId, out var transactionMementos) &&
+            transactionMementos.TryGetValue(step, out var state))
         {
-            var transactionMementos = _store.GetOrAdd(transactionId, _ => new ConcurrentDictionary<TStep, TState>());
-            transactionMementos[step] = state;
-            return Task.CompletedTask;
+            return Task.FromResult<TState?>(state);
         }
+        return Task.FromResult<TState?>(null);
+    }
 
-        public Task<TState?> RetrieveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    {
+        if (_store.TryGetValue(transactionId, out var transactionMementos))
         {
-            if (_store.TryGetValue(transactionId, out var transactionMementos) &&
-                transactionMementos.TryGetValue(step, out var state))
+            transactionMementos.TryRemove(step, out _);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<IComparable?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
+    {
+        if (_store.TryGetValue(transactionId, out var transactionMementos) && !transactionMementos.IsEmpty)
+        {
+            var firstStep = transactionMementos.Keys.Min();
+            return Task.FromResult(firstStep);
+        }
+        return Task.FromResult<IComparable?>(default);
+    }
+
+    public Task RemoveTransactionAsync(string transactionId, CancellationToken cancellationToken = default)
+    {
+        _store.TryRemove(transactionId, out _);
+        return Task.CompletedTask;
+    }
+
+    public Task<Memento<TState>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
+    {
+        if (_store.TryGetValue(transactionId, out var transactionMementos) && !transactionMementos.IsEmpty)
+        {
+            var latestStep = transactionMementos.Keys.Max();
+            if (transactionMementos.TryGetValue(latestStep, out var state))
             {
-                return Task.FromResult<TState?>(state);
+                return Task.FromResult<Memento<TState>?>(new Memento<TState>(state));
             }
-            return Task.FromResult<TState?>(null);
         }
-
-        public Task RemoveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
-        {
-            if (_store.TryGetValue(transactionId, out var transactionMementos))
-            {
-                transactionMementos.TryRemove(step, out _);
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task<TStep?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
-        {
-            if (_store.TryGetValue(transactionId, out var transactionMementos) && !transactionMementos.IsEmpty)
-            {
-                var firstStep = transactionMementos.Keys.Min();
-                return Task.FromResult<TStep?>(firstStep);
-            }
-            return Task.FromResult<TStep?>(default);
-        }
-
-        public Task RemoveTransactionAsync(string transactionId, CancellationToken cancellationToken = default)
-        {
-            _store.TryRemove(transactionId, out _);
-            return Task.CompletedTask;
-        }
-
-        public Task<Memento<TState, TStep>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
-        {
-            if (_store.TryGetValue(transactionId, out var transactionMementos) && !transactionMementos.IsEmpty)
-            {
-                var latestStep = transactionMementos.Keys.Max();
-                if (transactionMementos.TryGetValue(latestStep, out var state))
-                {
-                    return Task.FromResult<Memento<TState, TStep>?>(new Memento<TState, TStep>(latestStep, state));
-                }
-            }
-            return Task.FromResult<Memento<TState, TStep>?>(null);
-        }
+        return Task.FromResult<Memento<TState>?>(null);
     }
 }
 

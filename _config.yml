@@ -1,0 +1,3 @@
+title: TransactR
+description: A lightweight .NET library for building reliable, stateful, and multi-step operations using the Memento pattern.
+theme: jekyll-theme-minimal

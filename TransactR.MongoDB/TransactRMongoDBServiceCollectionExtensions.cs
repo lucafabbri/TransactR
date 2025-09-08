@@ -5,14 +5,13 @@ namespace TransactR.MongoDB;
 
 public static class TransactRMongoDBServiceCollectionExtensions
 {
-    public static IServiceCollection AddMongoDbMementoStore<TState, TStep>(
-        this IServiceCollection services, string connectionString, string databaseName)
-        where TState : class, new()
-        where TStep : notnull, IComparable
+    public static ITransactorBuilder<TState> PersistedInMongo<TState>(
+        this ITransactorBuilder<TState> transactorBuilder, string connectionString, string databaseName)
+        where TState : class, IState, new()
     {
-        services.AddSingleton<IMongoClient>(new MongoClient(connectionString));
-        services.AddScoped(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(databaseName));
-        services.AddScoped<IMementoStore<TState, TStep>, MongoMementoStore<TState, TStep>>();
-        return services;
+        transactorBuilder.Options.Services.AddSingleton<IMongoClient>(new MongoClient(connectionString));
+        transactorBuilder.Options.Services.AddScoped(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(databaseName));
+        transactorBuilder.Options.Services.AddScoped<IMementoStore<TState>, MongoMementoStore<TState>>();
+        return transactorBuilder;
     }
 }

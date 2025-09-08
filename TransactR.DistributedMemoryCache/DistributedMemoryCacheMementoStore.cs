@@ -4,9 +4,8 @@ using System.Text.Json;
 
 namespace TransactR.DistributedMemoryCache;
 
-public class DistributedMemoryCacheMementoStore<TState, TStep> : IMementoStore<TState, TStep>
-    where TState : class, new()
-    where TStep : notnull, IComparable
+public class DistributedMemoryCacheMementoStore<TState> : IMementoStore<TState>
+    where TState : class, IState, new()
 {
     private readonly IDistributedCache _cache;
     private readonly DistributedCacheEntryOptions _options;
@@ -19,21 +18,19 @@ public class DistributedMemoryCacheMementoStore<TState, TStep> : IMementoStore<T
         _options = options ?? new DistributedCacheEntryOptions();
     }
 
-    private string GetKey(string transactionId, TStep step) => $"memento:{transactionId}:{step}";
+    private string GetKey(string transactionId, IComparable step) => $"memento:{transactionId}:{step}";
     private string GetLatestKey(string transactionId) => $"memento-latest:{transactionId}";
     private string GetFirstKey(string transactionId) => $"memento-first:{transactionId}";
 
-    public async Task SaveAsync(string transactionId, TStep step, TState state, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(string transactionId, TState state, CancellationToken cancellationToken = default)
     {
         var serializedState = JsonSerializer.Serialize(state);
-        var key = GetKey(transactionId, step);
+        var key = GetKey(transactionId, state.Step);
         await _cache.SetStringAsync(key, serializedState, _options, cancellationToken);
-        await _cache.SetStringAsync(GetLatestKey(transactionId), JsonSerializer.Serialize(new Memento<TState, TStep>(step, state)), _options, cancellationToken);
-        // La gestione del primo passo è più complessa in una cache distribuita senza transazioni.
-        // La manteniamo semplice per questa prima implementazione.
+        await _cache.SetStringAsync(GetLatestKey(transactionId), JsonSerializer.Serialize(new Memento<TState>(state)), _options, cancellationToken);
     }
 
-    public async Task<TState?> RetrieveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
+    public async Task<TState?> RetrieveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
     {
         var key = GetKey(transactionId, step);
         var serializedState = await _cache.GetStringAsync(key, cancellationToken);
@@ -41,20 +38,18 @@ public class DistributedMemoryCacheMementoStore<TState, TStep> : IMementoStore<T
         return JsonSerializer.Deserialize<TState>(serializedState);
     }
 
-    public Task RemoveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
     {
         var key = GetKey(transactionId, step);
         return _cache.RemoveAsync(key, cancellationToken);
     }
 
-    public async Task<TStep?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<IComparable?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        // Questa implementazione è una semplificazione e potrebbe non essere accurata in scenari distribuiti.
-        // Si può migliorare salvando esplicitamente la prima chiave.
         var serializedMemento = await _cache.GetStringAsync(GetFirstKey(transactionId), cancellationToken);
         if (serializedMemento is null) return default;
-        var memento = JsonSerializer.Deserialize<Memento<TState, TStep>>(serializedMemento);
-        return memento.Step;
+        var memento = JsonSerializer.Deserialize<Memento<TState>>(serializedMemento);
+        return memento.State.Step;
     }
 
     public async Task RemoveTransactionAsync(string transactionId, CancellationToken cancellationToken = default)
@@ -66,10 +61,10 @@ public class DistributedMemoryCacheMementoStore<TState, TStep> : IMementoStore<T
         // Per le chiavi individuali si userebbe un pattern di naming e un'operazione di bulk delete non standard.
     }
 
-    public async Task<Memento<TState, TStep>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<Memento<TState>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         var serializedMemento = await _cache.GetStringAsync(GetLatestKey(transactionId), cancellationToken);
         if (serializedMemento is null) return null;
-        return JsonSerializer.Deserialize<Memento<TState, TStep>>(serializedMemento);
+        return JsonSerializer.Deserialize<Memento<TState>>(serializedMemento);
     }
 }

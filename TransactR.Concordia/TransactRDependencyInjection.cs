@@ -1,22 +1,63 @@
 ﻿using Concordia;
 using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Linq;
+using System.Reflection;
 
 namespace TransactR.Concordia
 {
-    public static class TransactRDependencyInjection
+    public static class TransactRConcordiaDependencyInjection
     {
-        /// <summary>
-        /// Registers the TransactR TransactionalBehavior in the Concordia pipeline.
-        /// Ensure that implementations for IMementoStore and IStateRestorer are also registered.
-        /// </summary>
-        /// <param name="services">The IServiceCollection.</param>
-        /// <returns>The IServiceCollection for chaining.</returns>
-        public static IServiceCollection AddTransactRConcordia(this IServiceCollection services)
+        public static ITransactorBuilder OnConcordia(this ITransactorBuilder builder)
         {
-            // Register the behavior as an open generic.
-            // The DI container will resolve it for each TRequest that implements ITransactionalRequest.
-            services.AddScoped(typeof(IPipelineBehavior<,>), typeof(TransactionalBehavior<,,,,>));
-            return services;
+            builder.Options.TransactionContextBuilderFactory = new ConcordiaTransactionContextBuilderFactory();
+            return builder;
+        }
+    }
+
+    internal class ConcordiaTransactionContextBuilderFactory : ITransactionContextBuilderFactory
+    {
+        public ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
+            where TState : class, IState, new()
+            where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+        {
+            return new ConcordiaTransactionContextBuilder<TState, TTransactionContext>(options);
+        }
+    }
+
+    internal class ConcordiaTransactionContextBuilder<TState, TTransactionContext>
+        : TransactorBuilder<TState>, ITransactionContextBuilder<TState, TTransactionContext>
+        where TState : class, IState, new()
+        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+    {
+        public ConcordiaTransactionContextBuilder(TransactorBuilderOptions options) : base(options) { }
+
+        public ITransactionContextBuilder<TState, TTransactionContext> Surround<TRequest>()
+            where TRequest : ITransactionalRequest<TState>
+        {
+            var requestType = typeof(TRequest);
+            var responseType = GetResponseTypeFromRequest(requestType);
+
+            if (responseType == null)
+            {
+                throw new ArgumentException($"Type '{requestType.FullName}' must implement the 'IRequest<TResponse>' interface.");
+            }
+
+            var pipelineBehaviorInterfaceType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+            var transactionalBehaviorImplementationType = typeof(TransactionalBehavior<,,,>).MakeGenericType(requestType, responseType, typeof(TTransactionContext), typeof(TState));
+
+            Options.Services.AddTransient(pipelineBehaviorInterfaceType, transactionalBehaviorImplementationType);
+
+            return this;
+        }
+
+        private static Type? GetResponseTypeFromRequest(Type requestType)
+        {
+            var iRequestInterface = requestType.GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>));
+
+            return iRequestInterface?.GetGenericArguments().FirstOrDefault();
         }
     }
 }
+

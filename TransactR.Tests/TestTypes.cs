@@ -1,34 +1,35 @@
-﻿namespace TransactR.Tests.TestDoubles
+﻿
+namespace TransactR.Tests.TestDoubles;
+
+// A simple, concrete state object for testing.
+public class TestState : EnumState<TestStep>
 {
-    // A simple, concrete state object for testing.
-    public class TestState
-    {
-        public int Value { get; set; }
-    }
+    public int Value { get; set; }
 
-    // A simple enum for transaction steps.
-    public enum TestStep
-    {
-        StepOne = 1,
-        StepTwo = 2
-    }
+    public TestState() : base(TestStep.StepOne) { }
+    public TestState(TestStep currentStep) : base(currentStep) { }
+}
 
-    // A concrete request that only depends on TransactR interfaces.
-    public class TestRequest : ITransactionalRequest<TestState, TestStep>
-    {
-        public string TransactionId { get; set; }
-    }
+// A simple enum for transaction steps.
+public enum TestStep
+{
+    StepOne = 1,
+    StepTwo = 2
+}
 
-    // A concrete request that also specifies a rollback policy.
-    public class TestRequestWithPolicy : TestRequest, ITransactionalRequestWithPolicy<TestState, TestStep>
-    {
-        public RollbackPolicy RollbackPolicy { get; set; }
-    }
+// A concrete request that only depends on TransactR interfaces.
+public class TestRequest : ITransactionalRequest<TestState>
+{
+    public string TransactionId { get; set; }
 
-    // A simple response object.
-    public class TestResponse
-    {
-        public bool Success { get; set; }
-    }
+    public IComparable Step => TestStep.StepOne;
+
+    public RollbackPolicy RollbackPolicy => RollbackPolicy.RollbackToCurrentStep;
+}
+
+// A simple response object.
+public class TestResponse
+{
+    public bool Success { get; set; }
 }
 

@@ -23,6 +23,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactR.MongoDB", "Transa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TransactR.AzureTableStorage", "TransactR.AzureTableStorage\TransactR.AzureTableStorage.csproj", "{9AB07D55-B4D6-4638-9040-D8869DE2EC50}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Elementi di soluzione", "Elementi di soluzione", "{9CA5B7E1-49F0-3A3C-E2D8-B50723DDEE59}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{B36A84DF-456D-A817-6EDD-3EC3E7F6E11F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConcordiaAndTransactor.Sample", "ConcordiaAndTransactor.Sample\ConcordiaAndTransactor.Sample.csproj", "{2E582FD2-0330-9C05-23ED-D777559D12B5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -129,6 +140,18 @@ Global
 		{9AB07D55-B4D6-4638-9040-D8869DE2EC50}.Release|x64.Build.0 = Release|Any CPU
 		{9AB07D55-B4D6-4638-9040-D8869DE2EC50}.Release|x86.ActiveCfg = Release|Any CPU
 		{9AB07D55-B4D6-4638-9040-D8869DE2EC50}.Release|x86.Build.0 = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|x64.Build.0 = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Debug|x86.Build.0 = Debug|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|x64.ActiveCfg = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|x64.Build.0 = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|x86.ActiveCfg = Release|Any CPU
+		{2E582FD2-0330-9C05-23ED-D777559D12B5}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -142,6 +165,7 @@ Global
 		{3293EB5E-B589-4E35-B638-D76123FFCEA2} = {6C4D298B-81FB-2B6B-5AB6-46205EDDC72C}
 		{0DAC0968-3DD3-482F-964E-27A47A3A65AA} = {6C4D298B-81FB-2B6B-5AB6-46205EDDC72C}
 		{9AB07D55-B4D6-4638-9040-D8869DE2EC50} = {6C4D298B-81FB-2B6B-5AB6-46205EDDC72C}
+		{2E582FD2-0330-9C05-23ED-D777559D12B5} = {B36A84DF-456D-A817-6EDD-3EC3E7F6E11F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {FF5529F6-8699-40E3-80ED-587B2EEF34FD}

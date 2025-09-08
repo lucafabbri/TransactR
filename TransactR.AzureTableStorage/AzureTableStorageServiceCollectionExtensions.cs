@@ -19,12 +19,11 @@ public static class AzureTableStorageServiceCollectionExtensions
     /// <param name="connectionString">The Azure Table Storage connection string.</param>
     /// <param name="tableName">The name of the table to use for mementos.</param>
     /// <returns>The services collection to continue the chain.</returns>
-    public static IServiceCollection AddAzureTableStorageMementoStore<TState, TStep>(
-        this IServiceCollection services,
+    public static ITransactorBuilder<TState> PersistedOnAzureTable<TState>(
+        this ITransactorBuilder<TState> transactorBuilder,
         string connectionString,
         string tableName = "mementos")
-        where TStep : notnull, IComparable
-        where TState : class, new()
+        where TState : class, IState, new()
     {
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -32,15 +31,14 @@ public static class AzureTableStorageServiceCollectionExtensions
         }
 
         // Register the TableClient as a singleton, as it is thread-safe and efficient to reuse.
-        services.TryAddSingleton(sp => new TableClient(connectionString, tableName));
+        transactorBuilder.Options.Services.TryAddSingleton(sp => new TableClient(connectionString, tableName));
 
         // Register the IMementoStore implementation.
-        services.TryAddScoped<IMementoStore<TState, TStep>>(sp =>
+        transactorBuilder.Options.Services.TryAddScoped<IMementoStore<TState>>(sp =>
         {
             var tableClient = sp.GetRequiredService<TableClient>();
-            return new AzureTableStoreMemento<TState, TStep>(tableClient, tableName);
+            return new AzureTableStoreMemento<TState>(tableClient, tableName);
         });
-
-        return services;
+        return transactorBuilder;
     }
 }

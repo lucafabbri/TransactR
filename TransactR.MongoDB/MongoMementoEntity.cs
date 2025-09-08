@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace TransactR.MongoDB;
 
 public class MongoMementoEntity<TState>
-        where TState : class, new()
+        where TState : class, IState, new()
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -18,22 +18,19 @@ public class MongoMementoEntity<TState>
 
     public string State { get; set; } = string.Empty;
 
-    public static MongoMementoEntity<TState> FromMemento<TStep>(string transactionId, TStep step, TState state)
-        where TStep : notnull, IComparable
+    public static MongoMementoEntity<TState> FromMemento(string transactionId, TState state)
     {
         return new MongoMementoEntity<TState>
         {
             TransactionId = transactionId,
-            Step = JsonSerializer.Serialize(step),
+            Step = JsonSerializer.Serialize(state.Step),
             State = JsonSerializer.Serialize(state)
         };
     }
 
-    public Memento<TState, TStep> ToMemento<TStep>()
-        where TStep : notnull, IComparable
+    public Memento<TState> ToMemento()
     {
-        return new Memento<TState, TStep>(
-            JsonSerializer.Deserialize<TStep>(Step)!,
+        return new Memento<TState>(
             JsonSerializer.Deserialize<TState>(State)!
         );
     }
