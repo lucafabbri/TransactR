@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="0.2.3"></a>
+## [0.2.3](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.2.3) (2025-09-09)
+
+### Bug Fixes
+
+* corrects ITransactionalContext inconsistency ([affe725](https://www.github.com/lucafabbri/TransactR/commit/affe7252141922c691ee23201a85880ce7d486d9))
+
 <a name="0.2.2"></a>
 ## [0.2.2](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.2.2) (2025-09-08)
 
