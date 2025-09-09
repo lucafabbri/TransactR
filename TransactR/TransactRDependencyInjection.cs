@@ -99,4 +99,6 @@ public interface ITransactionContextBuilder<TState, TTransactionContext> : ITran
 {
     ITransactionContextBuilder<TState, TTransactionContext> Surround<TRequest>()
         where TRequest : ITransactionalRequest<TState>;
+
+    ITransactionContextBuilder<TState, TTransactionContext> Surround(Type requestType);
 }

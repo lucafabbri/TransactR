@@ -47,18 +47,23 @@ namespace TransactR.MediatR
             where TRequest : ITransactionalRequest<TState>
         {
             var requestType = typeof(TRequest);
-            var responseType = GetResponseTypeFromRequest(requestType);
+            return Surround(requestType);
+        }
 
+        public ITransactionContextBuilder<TState, TTransactionContext> Surround(Type requestType)
+        {
+            if (!typeof(ITransactionalRequest<TState>).IsAssignableFrom(requestType))
+            {
+                throw new ArgumentException($"Type '{requestType.FullName}' must implement the 'ITransactionalRequest<{typeof(TState).FullName}>' interface.");
+            }
+            var responseType = GetResponseTypeFromRequest(requestType);
             if (responseType == null)
             {
                 throw new ArgumentException($"Type '{requestType.FullName}' must implement the MediatR 'IRequest<TResponse>' interface.");
             }
-
             var pipelineBehaviorInterfaceType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
             var transactionalBehaviorImplementationType = typeof(TransactionalBehavior<,,,>).MakeGenericType(requestType, responseType, typeof(TTransactionContext), typeof(TState));
-
             Options.Services.AddTransient(pipelineBehaviorInterfaceType, transactionalBehaviorImplementationType);
-
             return this;
         }
 
