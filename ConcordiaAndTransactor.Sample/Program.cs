@@ -27,10 +27,9 @@ builder.Services.AddCounterCommands();
 builder.Services
     .AddTransactR()
     .OnConcordia()
-        .HasState<CounterState>()
+        .HasState<int, CountContext>()
             .PersistedInMemory()
-            .RestoredBy<EmptyStateRestorer<CounterState>>()
-            .UseContext<CountContext>()
+            .RestoredBy<EmptyStateRestorer<int,CountContext>>()
                 .Surround<IncrementCommand>()
                 .Surround<DecrementCommand>()
                 .Surround<ResetCommand>();
@@ -64,7 +63,7 @@ app.MapPost("api/counter", async ([FromServices] ISender sender) =>
     return Results.Ok(await sender.Send(new CreateCounterCommand()));
 });
 
-app.MapGet("api/counter", async (string id, [FromServices] ISender sender) =>
+app.MapGet("api/counter", async ([FromServices] ISender sender) =>
 {
     return Results.Ok(await sender.Send(new GetAllCountersQuery()));
 });

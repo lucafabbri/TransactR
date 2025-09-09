@@ -12,16 +12,16 @@ namespace TransactR.Tests;
 
 public class DisasterRecoveryTests
 {
-    private readonly Mock<IMementoStore<TestState>> _mementoStoreMock;
-    private readonly Mock<IStateRestorer<TestState>> _stateRestorerMock;
+    private readonly Mock<IMementoStore<TestStep, SingleStepTestContext>> _mementoStoreMock;
+    private readonly Mock<IStateRestorer<TestStep, SingleStepTestContext>> _stateRestorerMock;
     private readonly TestableTransactionalBehavior<SingleStepTestContext> _sut;
 
     public DisasterRecoveryTests()
     {
-        _mementoStoreMock = new Mock<IMementoStore<TestState>>();
-        _stateRestorerMock = new Mock<IStateRestorer<TestState>>();
-        var contextProvider = new TransactionContextProvider<SingleStepTestContext>();
-        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest, TestResponse, SingleStepTestContext, TestState>>>();
+        _mementoStoreMock = new Mock<IMementoStore<TestStep, SingleStepTestContext>>();
+        _stateRestorerMock = new Mock<IStateRestorer<TestStep, SingleStepTestContext>>();
+        var contextProvider = new TransactionContextProvider<TestStep, SingleStepTestContext>();
+        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest<SingleStepTestContext>, TestResponse, TestStep, SingleStepTestContext>>>();
 
         _sut = new TestableTransactionalBehavior<SingleStepTestContext>(
             _mementoStoreMock.Object,
@@ -34,11 +34,11 @@ public class DisasterRecoveryTests
     public async Task ExecuteAsync_WhenExceptionIsThrown_ShouldRollbackToCurrentStepByDefault()
     {
         // Arrange
-        var request = new TestRequest { TransactionId = "trx-disaster-1" };
+        var request = new TestRequest<SingleStepTestContext> { TransactionId = "trx-disaster-1" };
         var exception = new InvalidOperationException("Something went wrong");
-        var originalState = new TestState { Value = 1 };
+        var originalState = new SingleStepTestContext { Value = 1 };
 
-        _mementoStoreMock.Setup(x => x.GetLatestAsync(request.TransactionId, default)).ReturnsAsync((Memento<TestState>?)null);
+        _mementoStoreMock.Setup(x => x.GetLatestAsync(request.TransactionId, default)).ReturnsAsync((Memento<TestStep, SingleStepTestContext>?)null);
         _mementoStoreMock.Setup(x => x.RetrieveAsync(request.TransactionId, TestStep.StepOne, default)).ReturnsAsync(originalState);
 
         // Act

@@ -10,21 +10,21 @@ namespace TransactR.Behaviors;
 /// Provides the core logic for transactional behavior, including memento saving and rollback on exception.
 /// This class is library-agnostic and designed to be extended by specific pipeline implementations (e.g., for MediatR).
 /// </summary>
-public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>
-    where TRequest : ITransactionalRequest<TState>
-    where TContext : class, ITransactionContext<TState>, new()
-    where TState : class, IState, new()
+public abstract class TransactionalBehaviorBase<TRequest, TResponse, TStep, TContext>
+    where TRequest : ITransactionalRequest<TStep, TContext>
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
+    where TStep : notnull, IComparable
 {
-    private readonly IMementoStore<TState> _mementoStore;
-    private readonly IStateRestorer<TState> _stateRestorer;
-    private readonly ITransactionContextProvider<TContext> _contextProvider;
-    private readonly ILogger<TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>> _logger;
+    private readonly IMementoStore<TStep, TContext> _mementoStore;
+    private readonly IStateRestorer<TStep, TContext> _stateRestorer;
+    private readonly ITransactionContextProvider<TStep, TContext> _contextProvider;
+    private readonly ILogger<TransactionalBehaviorBase<TRequest, TResponse, TStep, TContext>> _logger;
 
     protected TransactionalBehaviorBase(
-        IMementoStore<TState> mementoStore,
-        IStateRestorer<TState> stateRestorer,
-        ITransactionContextProvider<TContext> contextProvider,
-        ILogger<TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>> logger)
+        IMementoStore<TStep, TContext> mementoStore,
+        IStateRestorer<TStep, TContext> stateRestorer,
+        ITransactionContextProvider<TStep, TContext> contextProvider,
+        ILogger<TransactionalBehaviorBase<TRequest, TResponse, TStep, TContext>> logger)
     {
         _mementoStore = mementoStore ?? throw new ArgumentNullException(nameof(mementoStore));
         _stateRestorer = stateRestorer ?? throw new ArgumentNullException(nameof(stateRestorer));
@@ -41,13 +41,13 @@ public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, T
         CancellationToken cancellationToken)
     {
         var latestMemento = await _mementoStore.GetLatestAsync(request.TransactionId, cancellationToken);
-        ITransactionContext<TState> transactionContext;
+        TContext transactionContext;
 
         if (latestMemento != null)
         {
             _logger.LogInformation("Continuing transaction {TransactionId}. Loading state from step {Step}.", request.TransactionId, latestMemento.State.Step);
-            transactionContext = new TContext();
-            transactionContext.Hydrate(request.TransactionId, latestMemento.State);
+            transactionContext = latestMemento.State;
+            
         }
         else
         {
@@ -59,8 +59,8 @@ public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, T
         _contextProvider.Context = (TContext)transactionContext;
 
 		var transactionId = transactionContext.TransactionId;
-		var stepToProtect = transactionContext.State.Step;
-		var stateToProtect = transactionContext.State;
+		var stepToProtect = transactionContext.Step;
+		var stateToProtect = transactionContext;
 
 		try
         {
@@ -75,22 +75,22 @@ public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, T
                     await _mementoStore.RemoveTransactionAsync(transactionId, cancellationToken);
                     break;
                 case TransactionOutcome.InProgress:
-                    _logger.LogInformation("Transaction {TransactionId} is in progress at step {Step}. Memento is preserved.", transactionId, transactionContext.State.Step);
-                    if (!transactionContext.State.TryIncrementStep())
+                    _logger.LogInformation("Transaction {TransactionId} is in progress at step {Step}. Memento is preserved.", transactionId, transactionContext.Step);
+                    if (!transactionContext.TryIncrementStep())
                     {
-                        _logger.LogWarning("Transaction {TransactionId} step could not be incremented. Current step: {Step}.", transactionId, transactionContext.State.Step);
-                        throw new InvalidOperationException($"The transaction step '{transactionContext.State.Step}' could not be incremented. Ensure that the step type '{transactionContext.State.Step.GetType()}' can increment step value from here.");
+                        _logger.LogWarning("Transaction {TransactionId} step could not be incremented. Current step: {Step}.", transactionId, transactionContext.Step);
+                        throw new InvalidOperationException($"The transaction step '{transactionContext.Step}' could not be incremented. Ensure that the step type '{transactionContext.Step.GetType()}' can increment step value from here.");
 					}
 					break;
                 case TransactionOutcome.Failed:
-                    _logger.LogWarning("Transaction {TransactionId} failed at step {Step} based on response evaluation. Initiating rollback.", transactionId, transactionContext.State.Step);
+                    _logger.LogWarning("Transaction {TransactionId} failed at step {Step} based on response evaluation. Initiating rollback.", transactionId, transactionContext.Step);
                     throw new TransactionEvaluationFailedException($"The transaction outcome was evaluated as '{nameof(TransactionOutcome.Failed)}'.");
                 default:
                     throw new InvalidOperationException($"Unknown TransactionOutcome: {outcome}");
             }
 
 			_logger.LogInformation("Saving memento for transaction {TransactionId}, step {Step}.", transactionId, stepToProtect);
-			await _mementoStore.SaveAsync(transactionContext.TransactionId, transactionContext.State, cancellationToken);
+			await _mementoStore.SaveAsync(transactionContext.TransactionId, transactionContext, cancellationToken);
 
 			return response;
         }
@@ -128,7 +128,7 @@ public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, T
         }
     }
 
-    private async Task RollbackToStepAsync(string transactionId, IComparable step, CancellationToken cancellationToken)
+    private async Task RollbackToStepAsync(string transactionId, TStep step, CancellationToken cancellationToken)
     {
         var previousState = await _mementoStore.RetrieveAsync(transactionId, step, cancellationToken);
         if (previousState != null)

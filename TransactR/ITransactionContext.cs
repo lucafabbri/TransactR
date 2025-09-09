@@ -5,11 +5,15 @@ namespace TransactR;
 /// <summary>
 /// Contains the context for a transaction, including its ID, current step, and state.
 /// </summary>
-public interface ITransactionContext<TState>
-    where TState : class, IState, new()
+public interface ITransactionContext<TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     string TransactionId { get; }
-    TState State { get; }
+    TStep Step { get; }
+    bool TryIncrementStep();
+    bool TryDecrementStep();
+    bool TrySetStep(TStep step);
 
     /// <summary>
     /// Initializes the context for a new transaction.
@@ -17,15 +21,6 @@ public interface ITransactionContext<TState>
     /// <param name="transactionId">The unique identifier for the transaction.</param>
     /// <returns>The initialized context instance.</returns>
     void Initialize(string transactionId);
-
-    /// <summary>
-    /// Hydrates the context with data from an existing transaction.
-    /// </summary>
-    /// <param name="transactionId">The transaction's unique identifier.</param>
-    /// <param name="step">The current step of the transaction.</param>
-    /// <param name="state">The current state of the transaction.</param>
-    /// <returns>The hydrated context instance.</returns>
-    void Hydrate(string transactionId, TState state);
 
     /// <summary>
     /// Evaluates the response from the handler to determine the outcome of the transaction step.

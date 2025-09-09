@@ -3,13 +3,15 @@
 /// <summary>
 /// A test context specifically for multi-step sagas.
 /// </summary>
-public class TestSagaContext : TransactionContext<TestState>
+public class TestSagaContext : EnumTransactionContext<TestStep, TestSagaContext>
 {
-    public override IComparable InitialStep => TestStep.StepOne;
+    public override TestStep InitialStep => TestStep.StepOne;
+
+    public int Value { get; internal set; }
 
     public void AdvanceToStep(TestStep nextStep)
     {
-        State.TrySetStep(nextStep);
+        TrySetStep(nextStep);
     }
 
     public override TransactionOutcome EvaluateResponse(object? response = null)
@@ -21,7 +23,7 @@ public class TestSagaContext : TransactionContext<TestState>
         }
 
         // The saga is only complete when it reaches the final step.
-        if (State.Step.Equals(TestStep.StepTwo))
+        if (Step.Equals(TestStep.StepTwo))
         {
             return TransactionOutcome.Completed;
         }

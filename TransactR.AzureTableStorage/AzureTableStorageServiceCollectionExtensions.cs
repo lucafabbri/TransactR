@@ -10,7 +10,7 @@ namespace TransactR.AzureTableStorage;
 public static class AzureTableStorageServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the Azure Table Storage implementation of <see cref="IMementoStore{TState, TStep}"/>
+    /// Registers the Azure Table Storage implementation of <see cref="IMementoStore{TStep, TContext}"/>
     /// in the dependency injection container.
     /// </summary>
     /// <typeparam name="TState">The type of the state to store.</typeparam>
@@ -19,11 +19,12 @@ public static class AzureTableStorageServiceCollectionExtensions
     /// <param name="connectionString">The Azure Table Storage connection string.</param>
     /// <param name="tableName">The name of the table to use for mementos.</param>
     /// <returns>The services collection to continue the chain.</returns>
-    public static ITransactorBuilder<TState> PersistedOnAzureTable<TState>(
-        this ITransactorBuilder<TState> transactorBuilder,
+    public static ITransactorBuilder<TStep, TContext> PersistedOnAzureTable<TStep, TContext>(
+        this ITransactorBuilder<TStep, TContext> transactorBuilder,
         string connectionString,
         string tableName = "mementos")
-        where TState : class, IState, new()
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
     {
         if (string.IsNullOrEmpty(connectionString))
         {
@@ -34,10 +35,10 @@ public static class AzureTableStorageServiceCollectionExtensions
         transactorBuilder.Options.Services.TryAddSingleton(sp => new TableClient(connectionString, tableName));
 
         // Register the IMementoStore implementation.
-        transactorBuilder.Options.Services.TryAddScoped<IMementoStore<TState>>(sp =>
+        transactorBuilder.Options.Services.TryAddScoped<IMementoStore<TStep, TContext>>(sp =>
         {
             var tableClient = sp.GetRequiredService<TableClient>();
-            return new AzureTableStoreMemento<TState>(tableClient, tableName);
+            return new AzureTableStoreMemento<TStep, TContext>(tableClient, tableName);
         });
         return transactorBuilder;
     }

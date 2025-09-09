@@ -6,13 +6,19 @@ namespace ConcordiaAndTransactor.Sample.Infrastructure
 {
     public class CounterRepository : ICounterRepository
     {
-        private readonly ConcurrentDictionary<string, Counter> _counters = new();
+        private static List<Counter> initialCounters = new()
+        {
+            Counter.Create("counter_1"),
+            Counter.Create("counter_2"),
+            Counter.Create("counter_3")
+        };
+
+        private readonly ConcurrentDictionary<string, Counter> _counters = new(initialCounters.ToDictionary(_ => _.Id, _ => _));
 
         public Task<Counter> CreateCounter(CancellationToken cancellationToken)
         {
             var counter = Counter.Create();
-            var id = Ulid.NewUlid().ToString();
-            _counters[id] = counter;
+            _counters[counter.Id] = counter;
             return Task.FromResult(counter);
         }
 

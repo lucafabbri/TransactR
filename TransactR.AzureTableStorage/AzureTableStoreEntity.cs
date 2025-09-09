@@ -7,8 +7,9 @@ namespace TransactR.AzureTableStorage;
 /// Represents a memento entity stored in Azure Table Storage.
 /// </summary>
 /// <typeparam name="TState">The type of the state.</typeparam>
-public class AzureTableStoreEntity<TState> : ITableEntity
-        where TState : class, IState, new()
+public class AzureTableStoreEntity<TStep, TContext> : ITableEntity
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     public string PartitionKey { get; set; } = string.Empty;
     public string RowKey { get; set; } = string.Empty;
@@ -17,9 +18,9 @@ public class AzureTableStoreEntity<TState> : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 
-    public static AzureTableStoreEntity<TState> FromMemento(string transactionId, TState state)
+    public static AzureTableStoreEntity<TStep, TContext> FromMemento(string transactionId, TContext state)
     {
-        return new AzureTableStoreEntity<TState>
+        return new AzureTableStoreEntity<TStep, TContext>
         {
             PartitionKey = transactionId,
             RowKey = JsonSerializer.Serialize(state.Step),
@@ -27,8 +28,8 @@ public class AzureTableStoreEntity<TState> : ITableEntity
         };
     }
 
-    public Memento<TState> ToMemento()
+    public Memento<TStep, TContext> ToMemento()
     {
-        return new Memento<TState>(JsonSerializer.Deserialize<TState>(State)!);
+        return new Memento<TStep, TContext>(JsonSerializer.Deserialize<TContext>(State)!);
     }
 }

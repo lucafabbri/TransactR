@@ -13,16 +13,16 @@ namespace TransactR.Tests;
 
 public class LogicalFailureTests
 {
-    private readonly Mock<IMementoStore<TestState>> _mementoStoreMock;
-    private readonly Mock<IStateRestorer<TestState>> _stateRestorerMock;
+    private readonly Mock<IMementoStore<TestStep, TestSagaContext>> _mementoStoreMock;
+    private readonly Mock<IStateRestorer<TestStep, TestSagaContext>> _stateRestorerMock;
     private readonly TestableTransactionalBehavior<TestSagaContext> _sut;
 
     public LogicalFailureTests()
     {
-        _mementoStoreMock = new Mock<IMementoStore<TestState>>();
-        _stateRestorerMock = new Mock<IStateRestorer<TestState>>();
-        var contextProvider = new TransactionContextProvider<TestSagaContext>();
-        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest, TestResponse, TestSagaContext, TestState>>>();
+        _mementoStoreMock = new Mock<IMementoStore<TestStep, TestSagaContext>>();
+        _stateRestorerMock = new Mock<IStateRestorer<TestStep, TestSagaContext>>();
+        var contextProvider = new TransactionContextProvider<TestStep, TestSagaContext>();
+        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest<TestSagaContext>, TestResponse, TestStep, TestSagaContext>>>();
 
         _sut = new TestableTransactionalBehavior<TestSagaContext>(
             _mementoStoreMock.Object,
@@ -35,15 +35,15 @@ public class LogicalFailureTests
     public async Task ExecuteAsync_WhenEvaluationIsFailed_ShouldRollbackAndThrow()
     {
         // Arrange
-        var request = new TestRequest { TransactionId = "trx-logic-fail-1" };
+        var request = new TestRequest<TestSagaContext> { TransactionId = "trx-logic-fail-1" };
         var failedResponse = new TestResponse { Success = false }; // This will trigger the failure
-        var originalState = new TestState { Value = 1 };
+        var originalState = new TestSagaContext { Value = 1 };
 
-        _mementoStoreMock.Setup(x => x.GetLatestAsync(request.TransactionId, default)).ReturnsAsync((Memento<TestState>?)null);
+        _mementoStoreMock.Setup(x => x.GetLatestAsync(request.TransactionId, default)).ReturnsAsync((Memento<TestStep, TestSagaContext>?)null);
         _mementoStoreMock.Setup(x => x.RetrieveAsync(request.TransactionId, TestStep.StepOne, default)).ReturnsAsync(originalState);
 
         // Act
-        var action = () => _sut.Execute(request, (context) => Task.FromResult(failedResponse));
+        var action = async () => await _sut.Execute(request, (context) => Task.FromResult(failedResponse));
 
         // Assert
         await action.Should().ThrowAsync<TransactionEvaluationFailedException>();

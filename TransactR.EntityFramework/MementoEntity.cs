@@ -12,8 +12,9 @@ namespace TransactR.EntityFramework;
 /// </summary>
 /// <typeparam name="TState">Il tipo dello stato del memento.</typeparam>
 /// <typeparam name="TStep">Il tipo dell'identificatore del passo.</typeparam>
-public class MementoEntity<TState>
-    where TState : class, IState, new()
+public class MementoEntity<TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     /// <summary>
     /// L'identificatore della transazione.
@@ -25,7 +26,7 @@ public class MementoEntity<TState>
     /// L'identificatore del passo all'interno della transazione.
     /// </summary>
     [Key]
-    public string? Step { get; set; }
+    public TStep? Step { get; set; }
 
     /// <summary>
     /// Lo stato del memento, serializzato in formato JSON.

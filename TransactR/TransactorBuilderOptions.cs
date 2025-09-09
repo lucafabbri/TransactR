@@ -23,7 +23,7 @@ public class TransactorBuilderOptions
 
 public interface ITransactionContextBuilderFactory
 {
-    ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
-        where TState : class, IState, new()
-        where TTransactionContext : class, ITransactionContext<TState>, new();
+    ITransactionContextBuilder<TStep, TContext> Create<TStep, TContext>(TransactorBuilderOptions options)
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new();
 }

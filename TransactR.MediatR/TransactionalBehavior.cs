@@ -6,17 +6,17 @@ using TransactR.Behaviors;
 
 namespace TransactR.MediatR;
 
-public class TransactionalBehavior<TRequest, TResponse, TContext, TState>
-    : TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>, IPipelineBehavior<TRequest, TResponse>
-    where TRequest : ITransactionalRequest<TState>, IRequest<TResponse>
-    where TContext : class, ITransactionContext<TState>, new()
-    where TState : class, IState, new()
+public class TransactionalBehavior<TRequest, TResponse, TStep, TContext>
+    : TransactionalBehaviorBase<TRequest, TResponse, TStep, TContext>, IPipelineBehavior<TRequest, TResponse>
+    where TRequest : ITransactionalRequest<TStep, TContext>, IRequest<TResponse>
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
+    where TStep : notnull, IComparable
 {
     public TransactionalBehavior(
-        IMementoStore<TState> mementoStore,
-        IStateRestorer<TState> stateRestorer,
-        ITransactionContextProvider<TContext> contextProvider,
-        ILogger<TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>> logger)
+        IMementoStore<TStep, TContext> mementoStore,
+        IStateRestorer<TStep, TContext> stateRestorer,
+        ITransactionContextProvider<TStep, TContext> contextProvider,
+        ILogger<TransactionalBehaviorBase<TRequest, TResponse, TStep, TContext>> logger)
         : base(mementoStore, stateRestorer, contextProvider, logger)
     {
     }

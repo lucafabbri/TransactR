@@ -20,13 +20,15 @@ public static class TransactRServiceCollectionExtensions
     /// <typeparam name="TStep">Il tipo di passo del memento.</typeparam>
     /// <param name="services">La collezione di servizi.</param>
     /// <returns>La collezione di servizi.</returns>
-    public static ITransactorBuilder<TState> PeristedEfCore<
+    public static ITransactorBuilder<TStep, TContext> PeristedEfCore<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TDbContext,
-        TState, TStep>(this ITransactorBuilder<TState> transactorBuilder)
+        TStep, TContext>(this ITransactorBuilder<TStep, TContext> transactorBuilder)
         where TDbContext : DbContext
-        where TState : class, IState, new()
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
+
     {
-        transactorBuilder.Options.Services.AddScoped<IMementoStore<TState>, EntityFrameworkMementoStore<TDbContext, TState>>();
+        transactorBuilder.Options.Services.AddScoped<IMementoStore<TStep, TContext>, EntityFrameworkMementoStore<TDbContext, TStep, TContext>>();
         return transactorBuilder;
     }
 
@@ -39,16 +41,17 @@ public static class TransactRServiceCollectionExtensions
     /// <typeparam name="TStep">Il tipo di passo del memento.</typeparam>
     /// <param name="builder">Il builder usato per configurare il contesto di Entity Framework.</param>
     /// <returns>Il builder del contesto di Entity Framework.</returns>
-    public static DbContextOptionsBuilder UseTransactR<TDbContext, TState>(this DbContextOptionsBuilder builder)
+    public static DbContextOptionsBuilder UseTransactR<TDbContext, TStep, TContext>(this DbContextOptionsBuilder builder)
         where TDbContext : DbContext
-        where TState : class, IState, new()
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
     {
         if (builder is null)
         {
             throw new ArgumentNullException(nameof(builder));
         }
 
-        return ReplaceService<IModelCustomizer, TransactRModelCustomizer<TDbContext, TState>>(builder);
+        return ReplaceService<IModelCustomizer, TransactRModelCustomizer<TDbContext, TStep, TContext>>(builder);
 
         static DbContextOptionsBuilder ReplaceService<TService, TImplementation>(DbContextOptionsBuilder builder)
             where TImplementation : TService
@@ -63,15 +66,16 @@ public static class TransactRServiceCollectionExtensions
     /// <typeparam name="TStep">Il tipo di passo del memento.</typeparam>
     /// <param name="builder">Il builder usato per configurare il modello di Entity Framework.</param>
     /// <returns>Il builder del modello di Entity Framework.</returns>
-    public static ModelBuilder UseTransactR<TState>(this ModelBuilder builder)
-        where TState : class, IState, new()
+    public static ModelBuilder UseTransactR<TStep, TContext>(this ModelBuilder builder)
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
     {
         if (builder is null)
         {
             throw new ArgumentNullException(nameof(builder));
         }
 
-        var customizer = new TransactRModelCustomizer<DbContext, TState>();
+        var customizer = new TransactRModelCustomizer<DbContext, TStep, TContext>();
         customizer.Customize(builder, null);
         return builder;
     }

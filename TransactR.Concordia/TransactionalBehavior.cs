@@ -12,20 +12,20 @@ namespace TransactR.Concordia;
 /// An integration behavior for Concordia that adds TransactR's transactional capabilities
 /// to the Concordia pipeline by hooking into the OnInbound and OnOutbound methods.
 /// </summary>
-public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TState>
-    : ContextualPipelineBehavior<TRequest, TResponse, TransactRConcordiaContext<TTransactionContext>>
-    where TRequest : ITransactionalRequest<TState>, IRequest<TResponse>
-    where TTransactionContext : class, ITransactionContext<TState>, new()
-    where TState : class, IState, new()
+public class TransactionalBehavior<TRequest, TResponse, TStep, TContext>
+    : ContextualPipelineBehavior<TRequest, TResponse, TransactRConcordiaContext<TContext>>
+    where TRequest : ITransactionalRequest<TResponse, TStep, TContext>, IRequest<TResponse>
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
+    where TStep : notnull, IComparable
 {
-    private readonly IMementoStore<TState> _mementoStore;
-    private readonly IStateRestorer<TState> _stateRestorer;
-    private readonly ILogger<TransactionalBehavior<TRequest, TResponse, TTransactionContext, TState>> _logger;
+    private readonly IMementoStore<TStep, TContext> _mementoStore;
+    private readonly IStateRestorer<TStep, TContext> _stateRestorer;
+    private readonly ILogger<TransactionalBehavior<TRequest, TResponse, TStep, TContext>> _logger;
 
     public TransactionalBehavior(
-        IMementoStore<TState> mementoStore,
-        IStateRestorer<TState> stateRestorer,
-        ILogger<TransactionalBehavior<TRequest, TResponse, TTransactionContext, TState>> logger)
+        IMementoStore<TStep, TContext> mementoStore,
+        IStateRestorer<TStep, TContext> stateRestorer,
+        ILogger<TransactionalBehavior<TRequest, TResponse, TStep, TContext>> logger)
     {
         _mementoStore = mementoStore;
         _stateRestorer = stateRestorer;
@@ -35,14 +35,14 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
     /// <summary>
     /// Executed before the handler. This is where we create/load the transaction context and save the memento.
     /// </summary>
-    protected override async Task OnInbound(TransactRConcordiaContext<TTransactionContext> concordiaContext, TRequest request, CancellationToken cancellationToken)
+    protected override async Task OnInbound(TransactRConcordiaContext<TContext> concordiaContext, TRequest request, CancellationToken cancellationToken)
     {
         var latestMemento = await _mementoStore.GetLatestAsync(request.TransactionId, cancellationToken);
-        var transactionContext = new TTransactionContext();
+        var transactionContext = new TContext();
 
         if (latestMemento != null)
         {
-            transactionContext.Hydrate(request.TransactionId, latestMemento.State);
+            transactionContext = latestMemento.State;
         }
         else
         {
@@ -51,14 +51,14 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
 
         concordiaContext.TransactionContext = transactionContext;
 
-        _logger.LogInformation("Saving memento for transaction {TransactionId}, step {Step}.", transactionContext.TransactionId, transactionContext.State.Step);
-        await _mementoStore.SaveAsync(transactionContext.TransactionId, transactionContext.State, cancellationToken);
+        _logger.LogInformation("Saving memento for transaction {TransactionId}, step {Step}.", transactionContext.TransactionId, transactionContext.Step);
+        await _mementoStore.SaveAsync(transactionContext.TransactionId, transactionContext, cancellationToken);
     }
 
     /// <summary>
     /// Executed after the handler. This is where we evaluate the response, handle rollbacks, and clean up mementos.
     /// </summary>
-    protected override async Task OnOutbound(TransactRConcordiaContext<TTransactionContext> concordiaContext, TResponse response, CancellationToken cancellationToken)
+    protected override async Task OnOutbound(TransactRConcordiaContext<TContext> concordiaContext, TResponse response, CancellationToken cancellationToken)
     {
         var transactionContext = concordiaContext.TransactionContext;
         var transactionId = transactionContext.TransactionId;
@@ -66,7 +66,7 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
         if (!concordiaContext.IsSuccess)
         {
             _logger.LogError("An exception occurred. Initiating disaster recovery for transaction {TransactionId}.", transactionId);
-            await ApplyRollbackPolicyAsync(request: default, transactionId, transactionContext.State.Step, cancellationToken); // We don't have the request here, but we can still apply policy
+            await ApplyRollbackPolicyAsync(request: default, transactionId, transactionContext.Step, cancellationToken); // We don't have the request here, but we can still apply policy
             return;
         }
 
@@ -79,18 +79,20 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
                 break;
 
             case TransactionOutcome.InProgress:
-                _logger.LogInformation("Transaction {TransactionId} is in progress at step {Step}. Memento is preserved.", transactionId, transactionContext.State.Step);
+                transactionContext.TryIncrementStep();
+                _logger.LogInformation("Transaction {TransactionId} is in progress at step {Step}. Memento is preserved.", transactionId, transactionContext.Step);
+                await _mementoStore.SaveAsync(transactionContext.TransactionId, transactionContext, cancellationToken);
                 break;
 
             case TransactionOutcome.Failed:
-                _logger.LogWarning("Transaction {TransactionId} failed at step {Step} based on response evaluation. Initiating rollback.", transactionId, transactionContext.State.Step);
-                await ApplyRollbackPolicyAsync(request: default, transactionId, transactionContext.State.Step, cancellationToken, isLogicalFailure: true);
+                _logger.LogWarning("Transaction {TransactionId} failed at step {Step} based on response evaluation. Initiating rollback.", transactionId, transactionContext.Step);
+                await ApplyRollbackPolicyAsync(request: default, transactionId, transactionContext.Step, cancellationToken, isLogicalFailure: true);
                 throw new TransactionEvaluationFailedException($"The transaction outcome was evaluated as '{nameof(TransactionOutcome.Failed)}'.");
         }
     }
-    private async Task ApplyRollbackPolicyAsync(TRequest request, string transactionId, IComparable currentStep, CancellationToken cancellationToken, bool isLogicalFailure = false)
+    private async Task ApplyRollbackPolicyAsync(TRequest? request, string transactionId, TStep currentStep, CancellationToken cancellationToken, bool isLogicalFailure = false)
     {
-        var policy = request.RollbackPolicy;
+        var policy = request?.RollbackPolicy ?? RollbackPolicy.RollbackToCurrentStep;
         if (isLogicalFailure)
         {
             // For logical failures without an explicit policy, we default to rolling back the current step.
@@ -122,7 +124,7 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
         }
     }
 
-    private async Task RollbackToStepAsync(string transactionId, IComparable step, CancellationToken cancellationToken)
+    private async Task RollbackToStepAsync(string transactionId, TStep step, CancellationToken cancellationToken)
     {
         var previousState = await _mementoStore.RetrieveAsync(transactionId, step, cancellationToken);
         if (previousState != null)

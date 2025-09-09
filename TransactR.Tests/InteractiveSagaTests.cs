@@ -10,17 +10,17 @@ namespace TransactR.Tests;
 
 public class InteractiveSagaTests
 {
-    private readonly Mock<IMementoStore<TestState>> _mementoStoreMock;
-    private readonly Mock<IStateRestorer<TestState>> _stateRestorerMock;
-    private readonly TransactionContextProvider<TestSagaContext> _contextProvider;
+    private readonly Mock<IMementoStore<TestStep, TestSagaContext>> _mementoStoreMock;
+    private readonly Mock<IStateRestorer<TestStep, TestSagaContext>> _stateRestorerMock;
+    private readonly TransactionContextProvider<TestStep, TestSagaContext> _contextProvider;
     private readonly TestableTransactionalBehavior<TestSagaContext> _sut;
 
     public InteractiveSagaTests()
     {
-        _mementoStoreMock = new Mock<IMementoStore<TestState>>();
-        _stateRestorerMock = new Mock<IStateRestorer<TestState>>();
-        _contextProvider = new TransactionContextProvider<TestSagaContext>();
-        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest, TestResponse, TestSagaContext, TestState>>>();
+        _mementoStoreMock = new Mock<IMementoStore<TestStep, TestSagaContext>>();
+        _stateRestorerMock = new Mock<IStateRestorer<TestStep, TestSagaContext>>();
+        _contextProvider = new TransactionContextProvider<TestStep, TestSagaContext>();
+        var loggerMock = new Mock<ILogger<TransactionalBehaviorBase<TestRequest<TestSagaContext>, TestResponse, TestStep, TestSagaContext>>>();
         _sut = new TestableTransactionalBehavior<TestSagaContext>(
             _mementoStoreMock.Object,
             _stateRestorerMock.Object,

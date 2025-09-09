@@ -5,12 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 namespace TransactR.AzureTableStorage;
 
 /// <summary>
-/// An Azure Table Storage implementation of <see cref="IMementoStore{TState, TStep}"/>.
+/// An Azure Table Storage implementation of <see cref="IMementoStore{TStep, TContext}"/>.
 /// </summary>
 /// <typeparam name="TState">The type of the state.</typeparam>
 /// <typeparam name="TStep">The type of the transaction step identifier.</typeparam>
-public class AzureTableStoreMemento<TState> : IMementoStore<TState>
-    where TState : class, IState, new()
+public class AzureTableStoreMemento<TStep, TContext> : IMementoStore<TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     private readonly TableClient _tableClient;
     private readonly string _tableName;
@@ -28,18 +29,18 @@ public class AzureTableStoreMemento<TState> : IMementoStore<TState>
     }
 
     /// <inheritdoc />
-    public async Task SaveAsync(string transactionId, TState state, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(string transactionId, TContext state, CancellationToken cancellationToken = default)
     {
-        var entity = AzureTableStoreEntity<TState>.FromMemento(transactionId, state);
+        var entity = AzureTableStoreEntity<TStep, TContext>.FromMemento(transactionId, state);
         await _tableClient.UpsertEntityAsync(entity, cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<TState?> RetrieveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public async Task<TContext?> RetrieveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
         try
         {
-            var entity = await _tableClient.GetEntityAsync<AzureTableStoreEntity<TState>>(transactionId, System.Text.Json.JsonSerializer.Serialize(step), cancellationToken: cancellationToken);
+            var entity = await _tableClient.GetEntityAsync<AzureTableStoreEntity<TStep, TContext>>(transactionId, System.Text.Json.JsonSerializer.Serialize(step), cancellationToken: cancellationToken);
             return entity.Value.ToMemento().State;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -49,15 +50,15 @@ public class AzureTableStoreMemento<TState> : IMementoStore<TState>
     }
 
     /// <inheritdoc />
-    public async Task RemoveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
         await _tableClient.DeleteEntityAsync(transactionId, System.Text.Json.JsonSerializer.Serialize(step), cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
-    public async Task<IComparable?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<TStep?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        var entities = _tableClient.Query<AzureTableStoreEntity<TState>>(e => e.PartitionKey == transactionId)
+        var entities = _tableClient.Query<AzureTableStoreEntity<TStep, TContext>>(e => e.PartitionKey == transactionId)
                                   .OrderBy(e => e.RowKey)
                                   .Take(1);
 
@@ -70,7 +71,7 @@ public class AzureTableStoreMemento<TState> : IMementoStore<TState>
     /// <inheritdoc />
     public async Task RemoveTransactionAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        var entities = _tableClient.QueryAsync<AzureTableStoreEntity<TState>>(e => e.PartitionKey == transactionId, cancellationToken: cancellationToken);
+        var entities = _tableClient.QueryAsync<AzureTableStoreEntity<TStep, TContext>>(e => e.PartitionKey == transactionId, cancellationToken: cancellationToken);
 
         await foreach (var entity in entities)
         {
@@ -79,9 +80,9 @@ public class AzureTableStoreMemento<TState> : IMementoStore<TState>
     }
 
     /// <inheritdoc />
-    public async Task<Memento<TState>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<Memento<TStep, TContext>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        var entities = _tableClient.Query<AzureTableStoreEntity<TState>>(e => e.PartitionKey == transactionId)
+        var entities = _tableClient.Query<AzureTableStoreEntity<TStep, TContext>>(e => e.PartitionKey == transactionId)
                                   .OrderByDescending(e => e.RowKey)
                                   .Take(1);
 

@@ -3,13 +3,14 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace TransactR.EntityFramework;
 
-public class TransactRModelCustomizer<TDbContext, TState> : IModelCustomizer
+public class TransactRModelCustomizer<TDbContext, TStep, TContext> : IModelCustomizer
     where TDbContext : DbContext
-    where TState : class, IState, new()
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     public void Customize(ModelBuilder modelBuilder, DbContext context)
     {
-        modelBuilder.Entity<MementoEntity<TState>>(builder =>
+        modelBuilder.Entity<MementoEntity<TStep, TContext>>(builder =>
         {
             builder.HasKey(e => new { e.TransactionId, e.Step });
 

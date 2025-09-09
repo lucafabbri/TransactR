@@ -13,13 +13,14 @@ namespace TransactR;
 /// the system's state to a previous version (memento).
 /// </summary>
 /// <typeparam name="TState">The type of state to restore.</typeparam>
-public interface IStateRestorer<in TState>
-    where TState : class, IState, new()
+public interface IStateRestorer<in TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     /// <summary>
     /// Restores the system's state using the provided memento.
     /// </summary>
     /// <param name="state">The state to restore.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    Task RestoreAsync(TState state, CancellationToken cancellationToken = default);
+    Task RestoreAsync(TContext state, CancellationToken cancellationToken = default);
 }

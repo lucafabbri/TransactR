@@ -17,33 +17,33 @@ namespace TransactR.Concordia
 
     internal class ConcordiaTransactionContextBuilderFactory : ITransactionContextBuilderFactory
     {
-        public ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
-            where TState : class, IState, new()
-            where TTransactionContext : class, ITransactionContext<TState>, new()
+        public ITransactionContextBuilder<TStep, TContext> Create<TStep, TContext>(TransactorBuilderOptions options)
+            where TStep : notnull, IComparable
+            where TContext : class, ITransactionContext<TStep, TContext>, new()
         {
-            return new ConcordiaTransactionContextBuilder<TState, TTransactionContext>(options);
+            return new ConcordiaTransactionContextBuilder<TStep, TContext>(options);
         }
     }
 
-    internal class ConcordiaTransactionContextBuilder<TState, TTransactionContext>
-        : TransactorBuilder<TState>, ITransactionContextBuilder<TState, TTransactionContext>
-        where TState : class, IState, new()
-        where TTransactionContext : class, ITransactionContext<TState>, new()
+    internal class ConcordiaTransactionContextBuilder<TStep, TContext>
+        : TransactorBuilder<TStep, TContext>, ITransactionContextBuilder<TStep, TContext>
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
     {
         public ConcordiaTransactionContextBuilder(TransactorBuilderOptions options) : base(options) { }
 
-        public ITransactionContextBuilder<TState, TTransactionContext> Surround<TRequest>()
-            where TRequest : ITransactionalRequest<TState>
+        public ITransactionContextBuilder<TStep, TContext> Surround<TRequest>()
+            where TRequest : ITransactionalRequest<TStep, TContext>
         {
             var requestType = typeof(TRequest);
             return Surround(requestType);
         }
 
-        public ITransactionContextBuilder<TState, TTransactionContext> Surround(Type requestType)
+        public ITransactionContextBuilder<TStep, TContext> Surround(Type requestType)
         {
-            if (!typeof(ITransactionalRequest<TState>).IsAssignableFrom(requestType))
+            if (!typeof(ITransactionalRequest<TStep, TContext>).IsAssignableFrom(requestType))
             {
-                throw new ArgumentException($"Type '{requestType.FullName}' must implement the 'ITransactionalRequest<{typeof(TState).FullName}>' interface.");
+                throw new ArgumentException($"Type '{requestType.FullName}' must implement the 'ITransactionalRequest<{typeof(TStep).FullName},{typeof(TContext).FullName}>' interface.");
             }
             
             var responseType = GetResponseTypeFromRequest(requestType);
@@ -54,7 +54,7 @@ namespace TransactR.Concordia
             }
             
             var pipelineBehaviorInterfaceType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
-            var transactionalBehaviorImplementationType = typeof(TransactionalBehavior<,,,>).MakeGenericType(requestType, responseType, typeof(TTransactionContext), typeof(TState));
+            var transactionalBehaviorImplementationType = typeof(TransactionalBehavior<,,,>).MakeGenericType(requestType, responseType, typeof(TStep), typeof(TContext));
             
             Options.Services.AddTransient(pipelineBehaviorInterfaceType, transactionalBehaviorImplementationType);
             

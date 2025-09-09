@@ -4,8 +4,9 @@ using System.Text.Json;
 
 namespace TransactR.DistributedMemoryCache;
 
-public class DistributedMemoryCacheMementoStore<TState> : IMementoStore<TState>
-    where TState : class, IState, new()
+public class DistributedMemoryCacheMementoStore<TStep, TContext> : IMementoStore<TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     private readonly IDistributedCache _cache;
     private readonly DistributedCacheEntryOptions _options;
@@ -18,37 +19,37 @@ public class DistributedMemoryCacheMementoStore<TState> : IMementoStore<TState>
         _options = options ?? new DistributedCacheEntryOptions();
     }
 
-    private string GetKey(string transactionId, IComparable step) => $"memento:{transactionId}:{step}";
+    private string GetKey(string transactionId, TStep step) => $"memento:{transactionId}:{step}";
     private string GetLatestKey(string transactionId) => $"memento-latest:{transactionId}";
     private string GetFirstKey(string transactionId) => $"memento-first:{transactionId}";
 
-    public async Task SaveAsync(string transactionId, TState state, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(string transactionId, TContext state, CancellationToken cancellationToken = default)
     {
         var serializedState = JsonSerializer.Serialize(state);
         var key = GetKey(transactionId, state.Step);
         await _cache.SetStringAsync(key, serializedState, _options, cancellationToken);
-        await _cache.SetStringAsync(GetLatestKey(transactionId), JsonSerializer.Serialize(new Memento<TState>(state)), _options, cancellationToken);
+        await _cache.SetStringAsync(GetLatestKey(transactionId), JsonSerializer.Serialize(new Memento<TStep, TContext>(state)), _options, cancellationToken);
     }
 
-    public async Task<TState?> RetrieveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public async Task<TContext?> RetrieveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
         var key = GetKey(transactionId, step);
         var serializedState = await _cache.GetStringAsync(key, cancellationToken);
         if (serializedState is null) return null;
-        return JsonSerializer.Deserialize<TState>(serializedState);
+        return JsonSerializer.Deserialize<TContext>(serializedState);
     }
 
-    public Task RemoveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public Task RemoveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
         var key = GetKey(transactionId, step);
         return _cache.RemoveAsync(key, cancellationToken);
     }
 
-    public async Task<IComparable?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<TStep?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         var serializedMemento = await _cache.GetStringAsync(GetFirstKey(transactionId), cancellationToken);
         if (serializedMemento is null) return default;
-        var memento = JsonSerializer.Deserialize<Memento<TState>>(serializedMemento);
+        var memento = JsonSerializer.Deserialize<Memento<TStep, TContext>>(serializedMemento);
         return memento.State.Step;
     }
 
@@ -61,10 +62,10 @@ public class DistributedMemoryCacheMementoStore<TState> : IMementoStore<TState>
         // Per le chiavi individuali si userebbe un pattern di naming e un'operazione di bulk delete non standard.
     }
 
-    public async Task<Memento<TState>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<Memento<TStep, TContext>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
     {
         var serializedMemento = await _cache.GetStringAsync(GetLatestKey(transactionId), cancellationToken);
         if (serializedMemento is null) return null;
-        return JsonSerializer.Deserialize<Memento<TState>>(serializedMemento);
+        return JsonSerializer.Deserialize<Memento<TStep, TContext>>(serializedMemento);
     }
 }

@@ -4,11 +4,12 @@ namespace TransactR.DistributedMemoryCache;
 
 public static class TransactRDistributedCacheServiceCollectionExtensions
 {
-    public static ITransactorBuilder<TState> Cached<TState>(
-        this ITransactorBuilder<TState> transactorBuilder)
-        where TState : class, IState, new()
+    public static ITransactorBuilder<TStep, TContext> Cached<TStep, TContext>(
+        this ITransactorBuilder<TStep, TContext> transactorBuilder)
+        where TStep : notnull, IComparable
+        where TContext : class, ITransactionContext<TStep, TContext>, new()
     {
-        transactorBuilder.Options.Services.AddSingleton<IMementoStore<TState>, DistributedMemoryCacheMementoStore<TState>>();
+        transactorBuilder.Options.Services.AddSingleton<IMementoStore<TStep, TContext>, DistributedMemoryCacheMementoStore<TStep, TContext>>();
         return transactorBuilder;
     }
 }

@@ -5,8 +5,9 @@ using System.Text.Json;
 
 namespace TransactR.MongoDB;
 
-public class MongoMementoEntity<TState>
-        where TState : class, IState, new()
+public class MongoMementoEntity<TStep, TContext>
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -18,9 +19,9 @@ public class MongoMementoEntity<TState>
 
     public string State { get; set; } = string.Empty;
 
-    public static MongoMementoEntity<TState> FromMemento(string transactionId, TState state)
+    public static MongoMementoEntity<TStep, TContext> FromMemento(string transactionId, TContext state)
     {
-        return new MongoMementoEntity<TState>
+        return new MongoMementoEntity<TStep, TContext>
         {
             TransactionId = transactionId,
             Step = JsonSerializer.Serialize(state.Step),
@@ -28,10 +29,10 @@ public class MongoMementoEntity<TState>
         };
     }
 
-    public Memento<TState> ToMemento()
+    public Memento<TStep, TContext> ToMemento()
     {
-        return new Memento<TState>(
-            JsonSerializer.Deserialize<TState>(State)!
+        return new Memento<TStep, TContext>(
+            JsonSerializer.Deserialize<TContext>(State)!
         );
     }
 }

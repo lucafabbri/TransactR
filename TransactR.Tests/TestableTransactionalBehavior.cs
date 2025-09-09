@@ -10,21 +10,21 @@ namespace TransactR.Tests.TestDoubles;
 /// A testable wrapper around TransactionalBehaviorBase that exposes the ExecuteAsync method publicly.
 /// This is generic to support different context types in tests.
 /// </summary>
-public class TestableTransactionalBehavior<TContext> : TransactionalBehaviorBase<TestRequest, TestResponse, TContext, TestState>
-    where TContext : class, ITransactionContext<TestState>, new()
+public class TestableTransactionalBehavior<TContext> : TransactionalBehaviorBase<TestRequest<TContext>, TestResponse, TestStep, TContext>
+    where TContext : class, ITransactionContext<TestStep, TContext>, new()
 {
     public TestableTransactionalBehavior(
-        IMementoStore<TestState> mementoStore,
-        IStateRestorer<TestState> stateRestorer,
-        ITransactionContextProvider<TContext> contextProvider,
-        ILogger<TransactionalBehaviorBase<TestRequest, TestResponse, TContext, TestState>> logger)
+        IMementoStore<TestStep, TContext> mementoStore,
+        IStateRestorer<TestStep, TContext> stateRestorer,
+        ITransactionContextProvider<TestStep, TContext> contextProvider,
+        ILogger<TransactionalBehaviorBase<TestRequest<TContext>, TestResponse, TestStep, TContext>> logger)
         : base(mementoStore, stateRestorer, contextProvider, logger)
     {
     }
 
-    public Task<TestResponse> Execute(TestRequest request, Func<TContext, Task<TestResponse>> next, CancellationToken cancellationToken = default)
+    public async Task<TestResponse> Execute(TestRequest<TContext> request, Func<TContext, Task<TestResponse>> next, CancellationToken cancellationToken = default)
     {
-        return ExecuteAsync(request, next, cancellationToken);
+        return await ExecuteAsync(request, next, cancellationToken);
     }
 }
 

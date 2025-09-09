@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 
 namespace TransactR.EntityFramework;
 
-public class EntityFrameworkMementoStore<TDbContext, TState> : IMementoStore<TState>
+public class EntityFrameworkMementoStore<TDbContext, TStep, TContext> : IMementoStore<TStep, TContext>
     where TDbContext : DbContext
-    where TState : class, IState, new()
+    where TStep : notnull, IComparable
+    where TContext : class, ITransactionContext<TStep, TContext>, new()
 {
     private readonly TDbContext _context;
 
@@ -18,35 +19,35 @@ public class EntityFrameworkMementoStore<TDbContext, TState> : IMementoStore<TSt
         _context = context;
     }
 
-    public async Task SaveAsync(string transactionId, TState state, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(string transactionId, TContext state, CancellationToken cancellationToken = default)
     {
         var serializedState = JsonSerializer.Serialize(state);
 
-        var entity = await _context.Set<MementoEntity<TState>>()
+        var entity = await _context.Set<MementoEntity<TStep, TContext>>()
             .FirstOrDefaultAsync(e => e.TransactionId == transactionId && e.Step!.Equals(state.Step.ToString()), cancellationToken);
 
         if (entity == null)
         {
-            entity = new MementoEntity<TState>
+            entity = new MementoEntity<TStep, TContext>
             {
                 TransactionId = transactionId,
-                Step = state.Step.ToString(),
+                Step = state.Step,
                 State = serializedState
             };
-            _context.Set<MementoEntity<TState>>().Add(entity);
+            _context.Set<MementoEntity<TStep, TContext>>().Add(entity);
         }
         else
         {
             entity.State = serializedState;
-            _context.Set<MementoEntity<TState>>().Update(entity);
+            _context.Set<MementoEntity<TStep, TContext>>().Update(entity);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<TState?> RetrieveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public async Task<TContext?> RetrieveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Set<MementoEntity<TState>>()
+        var entity = await _context.Set<MementoEntity<TStep, TContext>>()
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.TransactionId == transactionId && e.Step!.Equals(step.ToString()), cancellationToken);
 
@@ -55,46 +56,46 @@ public class EntityFrameworkMementoStore<TDbContext, TState> : IMementoStore<TSt
             return null;
         }
 
-        return JsonSerializer.Deserialize<TState>(entity.State);
+        return JsonSerializer.Deserialize<TContext>(entity.State);
     }
 
-    public async Task RemoveAsync(string transactionId, IComparable step, CancellationToken cancellationToken = default)
+    public async Task RemoveAsync(string transactionId, TStep step, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Set<MementoEntity<TState>>()
+        var entity = await _context.Set<MementoEntity<TStep, TContext>>()
             .FirstOrDefaultAsync(e => e.TransactionId == transactionId && e.Step!.Equals(step.ToString()), cancellationToken);
 
         if (entity != null)
         {
-            _context.Set<MementoEntity<TState>>().Remove(entity);
+            _context.Set<MementoEntity<TStep, TContext>>().Remove(entity);
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
 
-    public async Task<IComparable?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<TStep?> GetFirstStepAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        var states = await _context.Set<MementoEntity<TState>>()
+        var states = await _context.Set<MementoEntity<TStep, TContext>>()
             .Where(e => e.TransactionId == transactionId)
             .ToListAsync(cancellationToken);
 
-        return states.Select(e => JsonSerializer.Deserialize<TState>(e.State)?.Step)
+        return states.Select(e => JsonSerializer.Deserialize<TContext>(e.State).Step)
             .Min();
     }
 
     public async Task RemoveTransactionAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        await _context.Set<MementoEntity<TState>>()
+        await _context.Set<MementoEntity<TStep, TContext>>()
             .Where(e => e.TransactionId == transactionId)
 #if NET9_0_OR_GREATER
             .ExecuteDeleteAsync(cancellationToken);
 #else
-            .ForEachAsync(e => _context.Set<MementoEntity<TState>>().Remove(e), cancellationToken);
+            .ForEachAsync(e => _context.Set<MementoEntity<TStep, TContext>>().Remove(e), cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 #endif
     }
 
-    public async Task<Memento<TState>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
+    public async Task<Memento<TStep, TContext>?> GetLatestAsync(string transactionId, CancellationToken cancellationToken = default)
     {
-        var entity = await _context.Set<MementoEntity<TState>>()
+        var entity = await _context.Set<MementoEntity<TStep, TContext>>()
             .Where(e => e.TransactionId == transactionId)
             .OrderByDescending(e => e.Step)
             .FirstOrDefaultAsync(cancellationToken);
@@ -104,13 +105,13 @@ public class EntityFrameworkMementoStore<TDbContext, TState> : IMementoStore<TSt
             return null;
         }
 
-        var state = JsonSerializer.Deserialize<TState>(entity.State);
+        var state = JsonSerializer.Deserialize<TContext>(entity.State);
 
         if (state == null)
         {
             return null;
         }
 
-        return new Memento<TState>(state);
+        return new Memento<TStep, TContext>(state);
     }
 }
