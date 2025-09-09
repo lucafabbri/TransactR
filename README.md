@@ -106,7 +106,7 @@ public class MyCommand : IRequest<MyResponse>, ITransactionalRequest<MyState>
 }
 
 // The context defines the transaction's workflow and outcome logic.
-public class MyTransactionContext : TransactionContext<MyTransactionContext, MyState, MyResponse>
+public class MyTransactionContext : TransactionContext<MyState, MyResponse>
 {
     // Logic to determine the transaction outcome based on the handler's response.
     public override TransactionOutcome EvaluateResponse(MyResponse response)
@@ -282,7 +282,7 @@ The system is composed of several decoupled components, each with a single respo
 
 * `ITransactionalRequest<TState>`: **The Saga Trigger.** This is the request object that initiates or continues a saga. It carries the unique `TransactionId` to correlate steps and the `RollbackPolicy` to define the failure recovery strategy.
 
-* `ITransactionContext<TContext, TState>`: **The Runtime Context.** A state container that holds the current `TransactionId` and `TState` during execution. It provides methods for initialization (`Initialize`), loading from persistence (`Hydrate`), and evaluating the business outcome of a step (`EvaluateResponse`).
+* `ITransactionContext<TState>`: **The Runtime Context.** A state container that holds the current `TransactionId` and `TState` during execution. It provides methods for initialization (`Initialize`), loading from persistence (`Hydrate`), and evaluating the business outcome of a step (`EvaluateResponse`).
 
 * `IState`: **The Saga State.** The data object that evolves throughout the transaction's lifecycle. Its crucial property is `Step`, which tracks the saga's progress and determines which actions to execute next.
 
