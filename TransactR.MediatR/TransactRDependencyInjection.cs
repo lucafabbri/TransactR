@@ -26,7 +26,7 @@ namespace TransactR.MediatR
     {
         public ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
             where TState : class, IState, new()
-            where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+            where TTransactionContext : class, ITransactionContext<TState>, new()
         {
             return new MediatRTransactionContextBuilder<TState, TTransactionContext>(options);
         }
@@ -39,7 +39,7 @@ namespace TransactR.MediatR
     internal class MediatRTransactionContextBuilder<TState, TTransactionContext>
         : TransactorBuilder<TState>, ITransactionContextBuilder<TState, TTransactionContext>
         where TState : class, IState, new()
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+        where TTransactionContext : class, ITransactionContext<TState>, new()
     {
         public MediatRTransactionContextBuilder(TransactorBuilderOptions options) : base(options) { }
 

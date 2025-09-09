@@ -6,7 +6,7 @@ namespace TransactR.Tests;
 /// A test context for simple, single-step transactions that are
 /// expected to complete immediately.
 /// </summary>
-public class SingleStepTestContext : TransactionContext<SingleStepTestContext, TestState>
+public class SingleStepTestContext : TransactionContext<TestState>
 {
     public override IComparable InitialStep => TestStep.StepOne;
 

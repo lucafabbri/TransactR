@@ -25,5 +25,5 @@ public interface ITransactionContextBuilderFactory
 {
     ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
         where TState : class, IState, new()
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new();
+        where TTransactionContext : class, ITransactionContext<TState>, new();
 }

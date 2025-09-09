@@ -3,7 +3,7 @@
 /// <summary>
 /// A test context specifically for multi-step sagas.
 /// </summary>
-public class TestSagaContext : TransactionContext<TestSagaContext, TestState>
+public class TestSagaContext : TransactionContext<TestState>
 {
     public override IComparable InitialStep => TestStep.StepOne;
 

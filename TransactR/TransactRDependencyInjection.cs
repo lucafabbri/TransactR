@@ -45,7 +45,7 @@ public interface ITransactorBuilder<TState> : ITransactorBuilder
     where TState : class, IState, new()
 {
     ITransactionContextBuilder<TState, TTransactionContext> UseContext<TTransactionContext>()
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new();
+        where TTransactionContext : class, ITransactionContext<TState>, new();
     ITransactorBuilder<TState> PersistedInMemory();
     ITransactorBuilder<TState> UseMementoStore<TMementoStore>()
         where TMementoStore : class, IMementoStore<TState>;
@@ -61,9 +61,9 @@ internal class TransactorBuilder<TState> : TransactorBuilder, ITransactorBuilder
     }
 
     public ITransactionContextBuilder<TState, TTransactionContext> UseContext<TTransactionContext>()
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+        where TTransactionContext : class, ITransactionContext<TState>, new()
     {
-        Options.Services.AddScoped<ITransactionContext<TTransactionContext, TState>, TTransactionContext>();
+        Options.Services.AddScoped<ITransactionContext<TState>, TTransactionContext>();
 
         if (Options.TransactionContextBuilderFactory != null)
         {
@@ -95,7 +95,7 @@ internal class TransactorBuilder<TState> : TransactorBuilder, ITransactorBuilder
 
 public interface ITransactionContextBuilder<TState, TTransactionContext> : ITransactorBuilder<TState>
     where TState : class, IState, new()
-    where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+    where TTransactionContext : class, ITransactionContext<TState>, new()
 {
     ITransactionContextBuilder<TState, TTransactionContext> Surround<TRequest>()
         where TRequest : ITransactionalRequest<TState>;

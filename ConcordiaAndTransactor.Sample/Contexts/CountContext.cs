@@ -4,7 +4,7 @@ using TransactR;
 
 namespace ConcordiaAndTransactor.Sample.Contexts;
 
-public class CountContext : TransactionContext<CountContext, CounterState>
+public class CountContext : TransactionContext<CounterState>
 {
     private int IntialNumericStep = 0;
     public override IComparable InitialStep => IntialNumericStep;

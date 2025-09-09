@@ -11,7 +11,7 @@ namespace TransactR.Tests.TestDoubles;
 /// This is generic to support different context types in tests.
 /// </summary>
 public class TestableTransactionalBehavior<TContext> : TransactionalBehaviorBase<TestRequest, TestResponse, TContext, TestState>
-    where TContext : class, ITransactionContext<TContext, TestState>, new()
+    where TContext : class, ITransactionContext<TestState>, new()
 {
     public TestableTransactionalBehavior(
         IMementoStore<TestState> mementoStore,

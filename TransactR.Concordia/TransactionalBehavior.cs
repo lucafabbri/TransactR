@@ -15,7 +15,7 @@ namespace TransactR.Concordia;
 public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TState>
     : ContextualPipelineBehavior<TRequest, TResponse, TransactRConcordiaContext<TTransactionContext>>
     where TRequest : ITransactionalRequest<TState>, IRequest<TResponse>
-    where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+    where TTransactionContext : class, ITransactionContext<TState>, new()
     where TState : class, IState, new()
 {
     private readonly IMementoStore<TState> _mementoStore;
@@ -38,9 +38,16 @@ public class TransactionalBehavior<TRequest, TResponse, TTransactionContext, TSt
     protected override async Task OnInbound(TransactRConcordiaContext<TTransactionContext> concordiaContext, TRequest request, CancellationToken cancellationToken)
     {
         var latestMemento = await _mementoStore.GetLatestAsync(request.TransactionId, cancellationToken);
-        var transactionContext = (latestMemento != null)
-            ? new TTransactionContext().Hydrate(request.TransactionId, latestMemento.State)
-            : new TTransactionContext().Initialize(request.TransactionId);
+        var transactionContext = new TTransactionContext();
+
+        if (latestMemento != null)
+        {
+            transactionContext.Hydrate(request.TransactionId, latestMemento.State);
+        }
+        else
+        {
+            transactionContext.Initialize(request.TransactionId);
+        }
 
         concordiaContext.TransactionContext = transactionContext;
 

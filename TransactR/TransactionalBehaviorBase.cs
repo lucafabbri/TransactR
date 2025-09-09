@@ -12,7 +12,7 @@ namespace TransactR.Behaviors;
 /// </summary>
 public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, TState>
     where TRequest : ITransactionalRequest<TState>
-    where TContext : class, ITransactionContext<TContext, TState>, new()
+    where TContext : class, ITransactionContext<TState>, new()
     where TState : class, IState, new()
 {
     private readonly IMementoStore<TState> _mementoStore;
@@ -41,17 +41,19 @@ public abstract class TransactionalBehaviorBase<TRequest, TResponse, TContext, T
         CancellationToken cancellationToken)
     {
         var latestMemento = await _mementoStore.GetLatestAsync(request.TransactionId, cancellationToken);
-        ITransactionContext<TContext, TState> transactionContext;
+        ITransactionContext<TState> transactionContext;
 
         if (latestMemento != null)
         {
             _logger.LogInformation("Continuing transaction {TransactionId}. Loading state from step {Step}.", request.TransactionId, latestMemento.State.Step);
-            transactionContext = new TContext().Hydrate(request.TransactionId, latestMemento.State);
+            transactionContext = new TContext();
+            transactionContext.Hydrate(request.TransactionId, latestMemento.State);
         }
         else
         {
             _logger.LogInformation("Starting new transaction {TransactionId}.", request.TransactionId);
-            transactionContext = new TContext().Initialize(request.TransactionId);
+            transactionContext = new TContext();
+            transactionContext.Initialize(request.TransactionId);
         }
 
         _contextProvider.Context = (TContext)transactionContext;

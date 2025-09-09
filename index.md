@@ -59,7 +59,7 @@ Here is a complete example of how to configure and use TransactR.
 
 First, define the objects for your transaction's state and the response from your handler.
 
-```
+```csharp
 // The state object that will be saved and restored.
 public class MyState
 {
@@ -71,14 +71,13 @@ public class MyResponse
 {
     public bool IsSuccess { get; set; }
 }
-
 ```
 
 ### 2. Configure Dependency Injection
 
 In your `Program.cs`, configure MediatR and TransactR using the new fluent API.
 
-```
+```csharp
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -93,14 +92,13 @@ builder.Services.AddTransactR()
             .RestoredBy<MyStateRestorer>() // Register your custom state restorer
             .UseContext<MyTransactionContext>()
                 .Surround<MyCommand>(); // Apply transactional behavior to MyCommand
-
 ```
 
 ### 3. Define the Transactional Components
 
 Create the command, the transaction context, and the state restorer.
 
-```
+```csharp
 // The command that initiates or continues the transaction.
 public class MyCommand : IRequest<MyResponse>, ITransactionalRequest<MyState>
 {
@@ -133,14 +131,13 @@ public class MyStateRestorer : IStateRestorer<MyState>
         return Task.CompletedTask;
     }
 }
-
 ```
 
 ### 4. Implement the Command Handler
 
 Inject the transaction context directly into your handler and implement your business logic.
 
-```
+```csharp
 public class MyCommandHandler : IRequestHandler<MyCommand, MyResponse>
 {
     private readonly MyTransactionContext _context;
@@ -159,14 +156,13 @@ public class MyCommandHandler : IRequestHandler<MyCommand, MyResponse>
         return Task.FromResult(new MyResponse { IsSuccess = true });
     }
 }
-
 ```
 
 ### 5. Overriding the Rollback Policy
 
 By default, a failure triggers a rollback to the current step (`RollbackToCurrentStep`). You can override this by implementing `ITransactionalRequestWithPolicy` on your command.
 
-```
+```csharp
 public class MyCommandWithPolicy : IRequest<MyResponse>, ITransactionalRequestWithPolicy<MyState>
 {
     public string TransactionId { get; set; }
@@ -174,7 +170,6 @@ public class MyCommandWithPolicy : IRequest<MyResponse>, ITransactionalRequestWi
     // Specify a different policy, e.g., roll back to the very first step.
     public RollbackPolicy RollbackPolicy => RollbackPolicy.RollbackToBeginning;
 }
-
 ```
 
 ## 🔧 Memento Store Implementations
@@ -204,6 +199,62 @@ TransactR is storage-agnostic. You can use an official implementation or create 
 * **Installation:** `dotnet add package TransactR.AzureTableStorage`
 
 * **DI Integration:** `builder.Services.AddAzureTableStorageMementoStore<MyState, int>(...);`
+
+## Deep Dive: State Management (`IState`)
+
+The `IState` interface is the core component for tracking the progress of a saga. Its main responsibility is to manage the current `Step` of the transaction and provide a standardized way to move between steps. TransactR offers several ready-to-use base classes to define the workflow of a saga.
+
+### Core `IState` Implementations
+
+The state management is designed following the **Template Method Pattern**. The abstract class `State<T>` defines the skeleton of the step progression algorithm, while its concrete subclasses implement the specific logic for incrementing or decrementing the step.
+
+#### `NumericState`
+
+This is the simplest implementation, ideal for linear sagas where the steps can be represented by a sequence of integers (0, 1, 2, ...).
+
+* **Use Case**: Simple, sequential workflows.
+
+* **How it works**: `TryIncrementStep` simply adds 1 to the current integer step. `TryDecrementStep` subtracts 1, stopping at 0.
+
+**Example:**
+```csharp
+// A state for a simple two-step process.
+public class MyNumericState : NumericState { }
+```
+
+#### `StringState`
+
+This implementation is designed for sagas where the steps are defined by specific names and the sequence is declared explicitly.
+
+* **Use Case**: Workflows with named stages.
+
+* **How it works**: It navigates through a predefined `string[] Steps` that you must provide. `TryIncrementStep` moves to the next string in the array, and `TryDecrementStep` moves to the previous one.
+
+**Example:**
+```csharp
+public class MyWorkflowState : StringState
+{
+    // Define the exact sequence of steps for the saga.
+    public override string[] Steps => new[] { ""OrderPlaced"", ""PaymentProcessed"", ""OrderShipped"" };
+}
+```
+
+#### `EnumState<TEnum>`
+
+This provides a type-safe way to define transaction steps using a C# `enum`. It combines the readability of `StringState` with the compile-time safety of enums.
+
+* **Use Case**: Any workflow where steps can be clearly defined as a set of enumerated constants.
+
+* **How it works**: It automatically uses the declared values of the specified `enum` to manage the sequence. `TryIncrementStep` moves to the next enum value, and `TryDecrementStep` moves to the previous one.
+
+**Example:**
+```csharp
+// 1. Define the steps as an enum.
+public enum OrderSteps { Placed, Processed, Shipped, Delivered }
+
+// 2. Create the state class based on the enum.
+public class MyOrderState : EnumState<OrderSteps> { }
+```
 
 ## Technical Deep Dive: TransactionalBehaviorBase
 

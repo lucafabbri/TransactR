@@ -19,7 +19,7 @@ namespace TransactR.Concordia
     {
         public ITransactionContextBuilder<TState, TTransactionContext> Create<TState, TTransactionContext>(TransactorBuilderOptions options)
             where TState : class, IState, new()
-            where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+            where TTransactionContext : class, ITransactionContext<TState>, new()
         {
             return new ConcordiaTransactionContextBuilder<TState, TTransactionContext>(options);
         }
@@ -28,7 +28,7 @@ namespace TransactR.Concordia
     internal class ConcordiaTransactionContextBuilder<TState, TTransactionContext>
         : TransactorBuilder<TState>, ITransactionContextBuilder<TState, TTransactionContext>
         where TState : class, IState, new()
-        where TTransactionContext : class, ITransactionContext<TTransactionContext, TState>, new()
+        where TTransactionContext : class, ITransactionContext<TState>, new()
     {
         public ConcordiaTransactionContextBuilder(TransactorBuilderOptions options) : base(options) { }
 
