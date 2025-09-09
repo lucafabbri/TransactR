@@ -63,6 +63,7 @@ internal class TransactorBuilder<TState> : TransactorBuilder, ITransactorBuilder
     public ITransactionContextBuilder<TState, TTransactionContext> UseContext<TTransactionContext>()
         where TTransactionContext : class, ITransactionContext<TState>, new()
     {
+        Options.Services.AddScoped<ITransactionContextProvider<TTransactionContext>, TransactionContextProvider<TTransactionContext>>();
         Options.Services.AddScoped<ITransactionContext<TState>, TTransactionContext>();
 
         if (Options.TransactionContextBuilderFactory != null)
