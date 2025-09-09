@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [versionize](https://github.com/versionize/versionize) for commit guidelines.
 
+<a name="0.3.0"></a>
+## [0.3.0](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.3.0) (2025-09-09)
+
+### Features
+
+* adds Surround(Type) for a wider use ([8a806bc](https://www.github.com/lucafabbri/TransactR/commit/8a806bc4b9782cdf77ed52da301ce4aecff2758c))
+
 <a name="0.2.3"></a>
 ## [0.2.3](https://www.github.com/lucafabbri/TransactR/releases/tag/v0.2.3) (2025-09-09)
 
